@@ -40,6 +40,7 @@ venv/
 # ── Claude Code / bkit 개인 설정 ─────────────
 .claude/
 .bkit/
+docs/.bkit-memory.json
 
 # ── 백업 / 임시 ──────────────────────────────
 .backup-*/
