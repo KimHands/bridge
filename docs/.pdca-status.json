@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-04T02:08:05.159Z",
+  "lastUpdated": "2026-05-04T08:14:45.596Z",
   "activeFeatures": [
     "core",
     "backend",
@@ -21,7 +21,8 @@
     "theme",
     "navigation",
     "mobile",
-    "legal"
+    "legal",
+    "scripts"
   ],
   "primaryFeature": "core",
   "features": {
@@ -285,6 +286,19 @@
         "lastUpdated": "2026-05-04T02:08:05.159Z"
       },
       "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/legal/LegalScreen.tsx"
+    },
+    "scripts": {
+      "phase": "do",
+      "phaseNumber": 3,
+      "matchRate": null,
+      "iterationCount": 0,
+      "requirements": [],
+      "documents": {},
+      "timestamps": {
+        "started": "2026-05-04T08:14:31.189Z",
+        "lastUpdated": "2026-05-04T08:14:45.596Z"
+      },
+      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/scripts/reset-db.sh"
     }
   },
   "pipeline": {
@@ -295,7 +309,7 @@
   "session": {
     "startedAt": "2026-04-12T12:29:46.916Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-04T02:08:05.159Z"
+    "lastActivity": "2026-05-04T08:14:45.596Z"
   },
   "history": [
     {
@@ -2575,6 +2589,36 @@
     {
       "timestamp": "2026-05-04T02:08:05.159Z",
       "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:14:31.189Z",
+      "feature": "scripts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:14:37.795Z",
+      "feature": "scripts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:14:38.290Z",
+      "feature": "scripts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:14:41.577Z",
+      "feature": "scripts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:14:45.596Z",
+      "feature": "scripts",
       "phase": "do",
       "action": "updated"
     }

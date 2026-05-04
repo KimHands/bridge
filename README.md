@@ -23,6 +23,7 @@ bridge/
 │   ├── prototype/            HTML 프로토타입 (참고용)
 │   ├── diagram/              시퀀스/아키텍처 다이어그램
 │   └── Bridge_*.md           기획 문서 (PRD, API 명세, 시퀀스 등)
+├── scripts/                  로컬 개발용 헬퍼 스크립트 (start/stop/dev/logs/reset-db)
 ├── docker-compose.yml        로컬 개발 환경 (api + db + redis)
 ├── docker-compose.prod.yml   운영 환경 (api + redis, DB는 RDS 사용)
 └── CLAUDE.md                 AI 협업 가이드 (필독)
@@ -74,31 +75,37 @@ bridge/
 - Node.js 18+ / npm
 - (모바일 실기기 테스트 시) Expo Go 앱
 
-### 2. Backend 실행 (Docker Compose)
+### 2. 환경 변수 준비
 
 ```bash
-# 환경 변수 파일 준비
-cp backend/.env.example backend/.env   # 없으면 backend/README 참고
+cp backend/.env.example backend/.env   # 최초 1회
+```
 
-# 컨테이너 기동 (api + db + redis)
-docker compose up -d
+### 3. 백엔드 + 모바일 한 번에 실행
 
-# DB 마이그레이션 + 시드 (entrypoint.sh가 자동 수행)
-docker compose logs -f api
+```bash
+./scripts/dev.sh
+```
 
-# 헬스 체크
-curl http://localhost:8000/health
+백엔드(api+db+redis)는 백그라운드로, Expo는 포그라운드로 떠 QR 코드를 보여준다.
+`Ctrl+C` 로 Expo 만 종료되며 백엔드는 계속 살아있다 (정지: `./scripts/stop.sh`).
+
+### 4. 백엔드만 따로 실행하고 싶다면
+
+```bash
+./scripts/start.sh                     # 컨테이너 기동 + /health 폴링
+curl http://localhost:8000/health      # 확인
 ```
 
 API 기본 주소: `http://localhost:8000`
 OpenAPI 문서: `http://localhost:8000/docs`
 
-### 3. Mobile 실행 (Expo)
+### 5. 모바일만 따로 실행
 
 ```bash
 cd mobile
-npm install
-npm start
+npm install                            # 최초 1회
+npm start                              # Expo 시작
 ```
 
 - iOS 시뮬레이터: `npm run ios`
@@ -106,6 +113,35 @@ npm start
 - 타입 체크: `npm run typecheck`
 
 > 실기기에서 로컬 API에 접속하려면 `mobile/src` 내 API base URL을 본인 PC의 LAN IP(예: `http://192.168.x.x:8000`)로 변경해야 한다. 자세한 내용은 `mobile/README.md` 참고.
+
+---
+
+## 스크립트 모음 (`scripts/`)
+
+로컬 개발에서 자주 쓰는 명령을 묶어둔 헬퍼 스크립트다. 모두 프로젝트 루트에서 실행한다.
+
+| 스크립트 | 역할 | 비고 |
+|---------|------|------|
+| `./scripts/start.sh` | 백엔드(api+db+redis) 백그라운드 기동 + `/health` 헬스체크 | 이미 떠있어도 안전 (idempotent) |
+| `./scripts/stop.sh` | 컨테이너 정지 | DB 데이터는 보존됨 |
+| `./scripts/dev.sh` | `start.sh` + `mobile`의 `npm start` 까지 한 번에 실행 | Expo 가 포그라운드로 떠 QR 코드 표시 |
+| `./scripts/logs.sh [서비스]` | 로그 실시간 보기 | 인자 없으면 `api`, `all` 입력 시 전체 컨테이너 |
+| `./scripts/reset-db.sh` | DB 볼륨 삭제 후 재기동 | ⚠️ 모든 데이터 삭제, `yes` 입력 확인 필요 |
+
+### 자주 쓰는 패턴
+
+```bash
+# 처음 시작
+cp backend/.env.example backend/.env
+./scripts/dev.sh                       # 백엔드+모바일 한 번에
+
+# 백엔드 디버깅
+./scripts/logs.sh                      # api 로그
+./scripts/logs.sh db                   # PostgreSQL 로그
+
+# 작업 종료
+./scripts/stop.sh                      # 컨테이너만 정지
+```
 
 ---
 
