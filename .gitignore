@@ -1,0 +1,47 @@
+# ── OS / Editor ──────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── Environment / Secrets (절대 커밋 금지) ──
+.env
+.env.local
+.env.production
+.env.development
+*.pem
+*.key
+*.p12
+
+# ── Node / Expo (mobile) ─────────────────────
+node_modules/
+.expo/
+.expo-shared/
+dist/
+build/
+web-build/
+*.tgz
+*.log
+
+# ── Python (backend) ─────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+venv/
+
+# ── Claude Code / bkit 개인 설정 ─────────────
+.claude/
+.bkit/
+
+# ── 백업 / 임시 ──────────────────────────────
+.backup-*/
+*.bak
+*.tmp

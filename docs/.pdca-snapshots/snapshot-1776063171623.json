@@ -1,0 +1,428 @@
+{
+  "timestamp": "2026-04-13T06:52:51.623Z",
+  "reason": "compaction",
+  "status": {
+    "version": "2.0",
+    "lastUpdated": "2026-04-13T06:52:51.567Z",
+    "activeFeatures": [
+      "core",
+      "backend",
+      "seeds",
+      "alembic",
+      "Phase1-인프라",
+      "schemas",
+      "dependencies",
+      "api",
+      "v1"
+    ],
+    "primaryFeature": "core",
+    "features": {
+      "core": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T01:56:31.080Z",
+          "lastUpdated": "2026-04-13T06:49:23.593Z"
+        },
+        "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/backend/app/core/encryption.py"
+      },
+      "backend": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T01:56:43.750Z",
+          "lastUpdated": "2026-04-13T06:51:49.262Z"
+        },
+        "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/backend/app/main.py"
+      },
+      "seeds": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T01:57:30.933Z",
+          "lastUpdated": "2026-04-13T06:49:53.580Z"
+        },
+        "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/backend/app/seeds/routines.py"
+      },
+      "alembic": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T01:57:49.859Z",
+          "lastUpdated": "2026-04-13T02:10:17.520Z"
+        },
+        "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/backend/alembic/env.py"
+      },
+      "Phase1-인프라": {
+        "phase": "act",
+        "phaseNumber": 5,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T02:21:43.994Z",
+          "lastUpdated": "2026-04-13T02:21:43.995Z"
+        },
+        "previousPhase": "check",
+        "autoAdvanced": true
+      },
+      "schemas": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T06:17:49.807Z",
+          "lastUpdated": "2026-04-13T06:49:30.546Z"
+        },
+        "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/backend/app/schemas/assessment.py"
+      },
+      "dependencies": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T06:17:50.039Z",
+          "lastUpdated": "2026-04-13T06:18:21.696Z"
+        },
+        "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/backend/app/dependencies/auth.py"
+      },
+      "api": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T06:17:50.986Z",
+          "lastUpdated": "2026-04-13T06:17:50.986Z"
+        },
+        "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/backend/app/api/__init__.py"
+      },
+      "v1": {
+        "phase": "do",
+        "phaseNumber": 3,
+        "matchRate": null,
+        "iterationCount": 0,
+        "requirements": [],
+        "documents": {},
+        "timestamps": {
+          "started": "2026-04-13T06:17:51.090Z",
+          "lastUpdated": "2026-04-13T06:52:51.567Z"
+        },
+        "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/backend/app/api/v1/auth.py"
+      }
+    },
+    "pipeline": {
+      "currentPhase": 1,
+      "level": "Dynamic",
+      "phaseHistory": []
+    },
+    "session": {
+      "startedAt": "2026-04-12T12:29:46.916Z",
+      "onboardingCompleted": false,
+      "lastActivity": "2026-04-13T06:52:51.567Z"
+    },
+    "history": [
+      {
+        "timestamp": "2026-04-13T01:56:31.080Z",
+        "feature": "core",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:56:35.738Z",
+        "feature": "core",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:56:38.523Z",
+        "feature": "core",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:56:43.750Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:56:48.136Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:56:52.677Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:56:58.602Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:57:05.829Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:57:14.257Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:57:21.620Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:57:26.839Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:57:30.933Z",
+        "feature": "seeds",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:57:38.752Z",
+        "feature": "seeds",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:57:49.859Z",
+        "feature": "alembic",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:58:00.174Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T01:58:10.012Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T02:09:42.390Z",
+        "feature": "core",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T02:10:17.520Z",
+        "feature": "alembic",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T02:14:38.661Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T02:21:43.995Z",
+        "feature": "Phase1-인프라",
+        "phase": "act",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:17:49.807Z",
+        "feature": "schemas",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:17:50.039Z",
+        "feature": "dependencies",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:17:50.986Z",
+        "feature": "api",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:17:51.090Z",
+        "feature": "v1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:17:56.873Z",
+        "feature": "schemas",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:18:04.198Z",
+        "feature": "core",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:18:10.964Z",
+        "feature": "core",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:18:21.696Z",
+        "feature": "dependencies",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:18:47.047Z",
+        "feature": "v1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:18:56.704Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:21:01.439Z",
+        "feature": "core",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:33:24.085Z",
+        "feature": "schemas",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:34:14.950Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:34:21.613Z",
+        "feature": "v1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:34:29.423Z",
+        "feature": "v1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:34:34.605Z",
+        "feature": "v1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:34:56.727Z",
+        "feature": "v1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:36:35.157Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:49:23.593Z",
+        "feature": "core",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:49:30.546Z",
+        "feature": "schemas",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:49:53.580Z",
+        "feature": "seeds",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:50:15.105Z",
+        "feature": "v1",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:50:28.461Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:50:33.292Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:51:49.262Z",
+        "feature": "backend",
+        "phase": "do",
+        "action": "updated"
+      },
+      {
+        "timestamp": "2026-04-13T06:52:51.567Z",
+        "feature": "v1",
+        "phase": "do",
+        "action": "updated"
+      }
+    ]
+  }
+}

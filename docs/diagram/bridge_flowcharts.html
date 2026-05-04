@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Bridge Flowcharts</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: #f7f6ff;
+  font-family: -apple-system, 'Pretendard', 'Segoe UI', sans-serif;
+  padding: 36px 40px;
+  color: #1e1c3a;
+}
+
+h2 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #5b558e;
+  margin-bottom: 20px;
+}
+
+.charts-row {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+/* ── 공통 노드 ── */
+.fc { display: flex; flex-direction: column; align-items: center; gap: 0; flex: 1; }
+
+.node {
+  display: flex; align-items: center; justify-content: center;
+  text-align: center;
+  font-size: 12px; font-weight: 500; line-height: 1.4;
+  padding: 9px 14px;
+  width: 100%;
+}
+.node.round    { border-radius: 999px; }
+.node.rect     { border-radius: 8px; }
+.node.diamond  { position: relative; background: transparent !important;
+                 border: none !important; padding: 0; width: 100%; }
+
+/* 색상 */
+.c-start  { background: #2c2a4a; color: #fff; }
+.c-proc   { background: #fff; border: 1.5px solid #c5c1e8; color: #2c2a4a; }
+.c-branch { background: #ede9ff; border: 1.5px solid #a89ff0; color: #3b3580; font-weight: 600; }
+.c-action { background: #d1fae5; border: 1.5px solid #6ee7b7; color: #065f46; }
+.c-warn   { background: #fef3c7; border: 1.5px solid #fcd34d; color: #78350f; }
+.c-end    { background: #5b558e; color: #fff; }
+.c-skip   { background: #fee2e2; border: 1.5px solid #fca5a5; color: #991b1b; }
+.c-db     { background: #dbeafe; border: 1.5px solid #93c5fd; color: #1e3a8a; }
+.c-crypto { background: #fce7f3; border: 1.5px solid #f9a8d4; color: #831843; }
+
+/* 화살표 */
+.arrow {
+  display: flex; flex-direction: column; align-items: center;
+  width: 100%;
+  position: relative;
+}
+.arrow-line {
+  width: 2px; background: #b0acd4;
+  flex-shrink: 0;
+}
+.arrow-label {
+  font-size: 10px; color: #7c78a8; font-weight: 600;
+  background: #f7f6ff; padding: 1px 6px; border-radius: 4px;
+  position: absolute; left: calc(50% + 6px);
+  white-space: nowrap;
+}
+.arrow svg { display: block; margin-top: -1px; }
+
+/* 분기 박스 */
+.tier-box {
+  width: 100%; border: 1.5px solid #a89ff0; border-radius: 8px;
+  background: #ede9ff; overflow: hidden;
+}
+.tier-row {
+  display: flex;
+}
+.tier-cell {
+  flex: 1; padding: 8px 10px; font-size: 11px; font-weight: 600;
+  color: #3b3580; text-align: center;
+  border-right: 1px solid #c5c1e8;
+  border-bottom: 1px solid #c5c1e8;
+}
+.tier-cell:last-child { border-right: none; }
+.tier-row:last-child .tier-cell { border-bottom: none; }
+.tier-cell .sub { font-size: 10px; font-weight: 400; color: #6c68a8; }
+
+/* 병렬 분기 (쿨다운) */
+.branch-row {
+  display: flex; width: 100%; gap: 0;
+  position: relative;
+}
+.branch-col {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 0;
+}
+.branch-line-h {
+  height: 2px; background: #b0acd4; width: 100%;
+}
+
+/* 수식 박스 */
+.formula {
+  width: 100%; border: 1.5px solid #c5c1e8; border-radius: 8px;
+  background: #fff; padding: 10px 14px;
+  font-size: 11px; color: #2c2a4a;
+}
+.formula .f-row { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+.formula .f-name { color: #5b558e; font-weight: 700; white-space: nowrap; }
+.formula .f-eq   { color: #6c68a8; }
+
+/* 구분선 */
+.divider {
+  width: 1.5px; background: #d6d3ec; align-self: stretch;
+  margin: 0 4px;
+}
+</style>
+</head>
+<body>
+
+<div class="charts-row">
+
+<!-- ══════════════════════════════════════ -->
+<!-- CHART A: PHQ-9 초기 루틴 배정        -->
+<!-- ══════════════════════════════════════ -->
+<div class="fc" style="max-width:300px;">
+  <h2>① PHQ-9 초기 루틴 배정</h2>
+
+  <div class="node round c-start" style="width:80%;">PHQ-9 9문항 응답 수집</div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-proc">합산 점수 계산 (0 ~ 27점)</div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <!-- 4분기 tier 박스 -->
+  <div class="tier-box">
+    <div class="tier-row">
+      <div class="tier-cell">0 – 4점<div class="sub">phq_tier = 1</div></div>
+      <div class="tier-cell">5 – 9점<div class="sub">phq_tier = 2</div></div>
+    </div>
+    <div class="tier-row">
+      <div class="tier-cell">10 – 14점<div class="sub">phq_tier = 3</div></div>
+      <div class="tier-cell">15점 이상<div class="sub">phq_tier = 4</div></div>
+    </div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-crypto">phq_tier + primary_cause<br>→ 평가 결과 AES-256-GCM 암호화</div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-db">assessments 테이블 저장</div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-proc">routines 테이블 필터<br><span style="font-size:10px;color:#6c68a8;">phq_tier_min ≤ tier ≤ phq_tier_max</span></div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-action">user_routines 배정<br><span style="font-size:10px;">source = 'initial'</span></div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node round c-end" style="width:80%;">requires_assessment → false</div>
+</div>
+
+<!-- 구분선 -->
+<div class="divider"></div>
+
+<!-- ══════════════════════════════════════ -->
+<!-- CHART B: 루틴 트리거 알고리즘         -->
+<!-- ══════════════════════════════════════ -->
+<div class="fc" style="max-width:360px;">
+  <h2>② 루틴 트리거 알고리즘</h2>
+
+  <div class="node round c-start" style="width:90%;">BackgroundTasks: run_trigger(user_id)</div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-db">독립 AsyncSessionLocal 생성</div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-proc">최근 7일 diary_entries 조회<br><span style="font-size:10px;color:#6c68a8;">LOOKBACK_DAYS = 7</span></div>
+
+  <!-- 분기: 일기 없으면 종료 -->
+  <div class="arrow" style="position:relative;">
+    <div class="arrow-line" style="height:18px;"></div>
+    <div class="arrow-label" style="top:4px;">일기 없으면</div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg>
+  </div>
+
+  <div class="node rect c-proc">keyword_freq 집계<br><span style="font-size:10px;color:#6c68a8;">emotion_keywords 수집 → 빈도 계산</span></div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <!-- 수식 -->
+  <div class="formula">
+    <div class="f-row"><span class="f-name">mood_component</span><span class="f-eq">= (5 − mood_avg) / 5 × 0.3</span></div>
+    <div class="f-row"><span class="f-name">keyword_component</span><span class="f-eq">= (키워드 빈도 / 전체 빈도) × 0.7</span></div>
+    <div class="f-row" style="border-top:1px solid #e8e5ff;margin-top:4px;padding-top:6px;">
+      <span class="f-name">trigger_score</span><span class="f-eq">= mood_component + keyword_component</span>
+    </div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-branch">발동 키워드 판정<br><span style="font-size:10px;">freq ≥ TRIGGER_THRESHOLD (3)</span></div>
+
+  <div class="arrow" style="position:relative;">
+    <div class="arrow-line" style="height:18px;"></div>
+    <div class="arrow-label" style="top:4px;">발동 키워드 없으면 → 종료</div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg>
+  </div>
+
+  <div class="node rect c-proc">점수 내림차순 정렬 → 상위 2개 선택</div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-branch">각 키워드별 쿨다운 확인<br><span style="font-size:10px;">cooldown_until &gt; now?</span></div>
+
+  <div class="arrow"><div class="arrow-line" style="height:12px;"></div></div>
+
+  <!-- 쿨다운 Y/N 분기 -->
+  <div class="branch-row">
+    <div class="branch-col">
+      <div class="branch-line-h"></div>
+      <div style="width:2px;height:12px;background:#b0acd4;"></div>
+      <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg>
+      <div class="node rect c-skip" style="width:90%;font-size:11px;">쿨다운 중<br>→ SKIP</div>
+    </div>
+    <div style="width:2px;background:#b0acd4;align-self:stretch;flex-shrink:0;"></div>
+    <div class="branch-col">
+      <div class="branch-line-h"></div>
+      <div style="width:2px;height:12px;background:#b0acd4;"></div>
+      <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg>
+      <div class="node rect c-action" style="width:90%;font-size:11px;">쿨다운 해제<br>→ 계속</div>
+    </div>
+  </div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-proc">routines 필터<br><span style="font-size:10px;color:#6c68a8;">phq_tier 범위 + target_keywords 매칭</span></div>
+
+  <div class="arrow" style="position:relative;">
+    <div class="arrow-line" style="height:18px;"></div>
+    <div class="arrow-label" style="top:4px;">이미 활성 루틴 → SKIP</div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg>
+  </div>
+
+  <div class="node rect c-action">UserRoutine 삽입<br><span style="font-size:10px;">source = 'trigger'</span></div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-warn">TriggerLog 기록<br><span style="font-size:10px;">cooldown_until = now + 3일</span></div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node rect c-db">DB commit</div>
+
+  <div class="arrow"><div class="arrow-line" style="height:18px;"></div>
+    <svg width="12" height="8"><path d="M0 0 L6 8 L12 0" fill="#b0acd4"/></svg></div>
+
+  <div class="node round c-end" style="width:90%;">완료</div>
+</div>
+
+</div><!-- /charts-row -->
+</body>
+</html>

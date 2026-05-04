@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Bridge — RN Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"/>
+<style>
+  html, body { margin: 0; padding: 0; background: #ECEAF6; font-family: "Pretendard Variable", -apple-system, sans-serif; }
+  * { box-sizing: border-box; }
+  body { min-height: 100vh; }
+  /* Frame around each iPhone artboard */
+  .phone-frame {
+    width: 390px; height: 844px; border-radius: 44px;
+    background: #1a1b21;
+    padding: 10px;
+    box-shadow: 0 30px 60px rgba(91,85,142,0.18), 0 8px 20px rgba(91,85,142,0.10);
+    position: relative;
+  }
+  .phone-frame::before {
+    content: ""; position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+    width: 110px; height: 32px; border-radius: 20px; background: #1a1b21; z-index: 100;
+  }
+  .phone-inner {
+    width: 100%; height: 100%; border-radius: 36px; overflow: hidden; background: #FAF8FF;
+    position: relative;
+  }
+  /* hide scrollbars in screens */
+  .phone-inner ::-webkit-scrollbar { width: 0; height: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- React + Babel -->
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<!-- Design tokens + atoms (must load first) -->
+<script type="text/babel" src="theme.jsx"></script>
+
+<!-- Screens -->
+<script type="text/babel" src="screens-auth.jsx"></script>
+<script type="text/babel" src="screens-assessment.jsx"></script>
+<script type="text/babel" src="screens-main.jsx"></script>
+<script type="text/babel" src="screens-diary.jsx"></script>
+
+<!-- Design canvas -->
+<script type="text/babel" src="design-canvas.jsx"></script>
+
+<!-- App orchestrator -->
+<script type="text/babel">
+const T = window.BridgeTokens;
+
+// Each artboard is a self-contained mini-app with its own navigation state,
+// initialized to the screen we want to showcase. The user can also navigate
+// freely within each one.
+function MiniApp({ initialScreen, initialSession, initialDraft, initialTab, initialParams }) {
+  const [screen, setScreen] = React.useState(initialScreen);
+  const [params, setParams] = React.useState(initialParams || {});
+  const [session, setSession] = React.useState(initialSession || null);
+  const [tab, setTabState] = React.useState(initialTab || "home");
+  const [draft, setDraft] = React.useState(initialDraft || {});
+
+  const go = (next, nextParams) => {
+    if (nextParams) setParams(nextParams);
+    setScreen(next);
+  };
+
+  const setTab = (t) => {
+    setTabState(t);
+    const map = { home: "home", routine: "routine", diary: "diary", report: "report", my: "my" };
+    setScreen(map[t] || "home");
+  };
+
+  const common = { go, params, session, setSession, tab, setTab, draft, setDraft };
+
+  switch (screen) {
+    case "splash":          return <SplashScreen {...common}/>;
+    case "onboarding1":     return <Onb1Screen {...common}/>;
+    case "onboarding2":     return <Onb2Screen {...common}/>;
+    case "onboarding3":     return <Onb3Screen {...common}/>;
+    case "login":           return <LoginScreen {...common}/>;
+    case "signup":          return <SignupScreen {...common}/>;
+    case "ai-assessment":   return <AssessmentScreen {...common}/>;
+    case "initial-routine": return <InitialRoutineScreen {...common}/>;
+    case "home":            return <HomeScreen {...common}/>;
+    case "routine":         return <RoutineScreen {...common}/>;
+    case "diary":           return <DiaryListScreen {...common}/>;
+    case "report":          return <ReportScreen {...common}/>;
+    case "my":              return <MyPageScreen {...common}/>;
+    case "diary-mood":      return <DiaryMoodScreen {...common}/>;
+    case "diary-keyword":   return <DiaryKeywordScreen {...common}/>;
+    case "diary-question":  return <DiaryQuestionScreen {...common}/>;
+    case "diary-memo":      return <DiaryMemoScreen {...common}/>;
+    case "diary-detail":    return <DiaryDetailScreen {...common}/>;
+    case "routine-detail":  return <RoutineDetailScreen {...common}/>;
+    case "routine-add":     return <RoutineAddScreen {...common}/>;
+    case "profile-edit":    return <ProfileEditScreen {...common}/>;
+    default:                return <HomeScreen {...common}/>;
+  }
+}
+
+function Phone({ children }) {
+  return (
+    <div className="phone-frame">
+      <div className="phone-inner">{children}</div>
+    </div>
+  );
+}
+
+const demoSession = { user_id: "u_demo", nickname: "종건", access_token: "mock", requires_assessment: false };
+const demoDraft = {
+  mood: "good", moodLabel: "좋음", moodColor: T.color.success,
+  keywords: ["햇살", "산책"],
+  detailAnswer: "공원 벤치에 앉아 따뜻한 햇살을 받았다. 마음이 천천히 가라앉았다.",
+};
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="auth" title="1. 인증 & 온보딩 (5)">
+        <DCArtboard id="splash"  label="01 Splash"          width={410} height={864}><Phone><MiniApp initialScreen="splash"/></Phone></DCArtboard>
+        <DCArtboard id="onb1"    label="02 Onboarding · Mood"     width={410} height={864}><Phone><MiniApp initialScreen="onboarding1"/></Phone></DCArtboard>
+        <DCArtboard id="onb2"    label="03 Onboarding · Routine"  width={410} height={864}><Phone><MiniApp initialScreen="onboarding2"/></Phone></DCArtboard>
+        <DCArtboard id="onb3"    label="04 Onboarding · Insights" width={410} height={864}><Phone><MiniApp initialScreen="onboarding3"/></Phone></DCArtboard>
+        <DCArtboard id="login"   label="05 Login"           width={410} height={864}><Phone><MiniApp initialScreen="login"/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="signup" title="2. 가입 & AI 진단 (3)">
+        <DCArtboard id="signup-screen" label="06 Sign Up"   width={410} height={864}><Phone><MiniApp initialScreen="signup"/></Phone></DCArtboard>
+        <DCArtboard id="assess"        label="07 AI 자가진단" width={410} height={864}><Phone><MiniApp initialScreen="ai-assessment"/></Phone></DCArtboard>
+        <DCArtboard id="init-routine"  label="08 첫 루틴 설정" width={410} height={864}><Phone><MiniApp initialScreen="initial-routine"/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="main" title="3. 메인 탭 (5)">
+        <DCArtboard id="home"     label="09 Home"            width={410} height={864}><Phone><MiniApp initialScreen="home"     initialSession={demoSession} initialTab="home"/></Phone></DCArtboard>
+        <DCArtboard id="routine"  label="10 Routine"         width={410} height={864}><Phone><MiniApp initialScreen="routine"  initialSession={demoSession} initialTab="routine"/></Phone></DCArtboard>
+        <DCArtboard id="diary"    label="11 Diary List"      width={410} height={864}><Phone><MiniApp initialScreen="diary"    initialSession={demoSession} initialTab="diary"/></Phone></DCArtboard>
+        <DCArtboard id="report"   label="12 Report"          width={410} height={864}><Phone><MiniApp initialScreen="report"   initialSession={demoSession} initialTab="report"/></Phone></DCArtboard>
+        <DCArtboard id="my"       label="13 My Page"         width={410} height={864}><Phone><MiniApp initialScreen="my"       initialSession={demoSession} initialTab="my"/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="diary-flow" title="4. 일기 작성 흐름 (4)">
+        <DCArtboard id="d-mood"    label="14 일기 · 기분 선택"  width={410} height={864}><Phone><MiniApp initialScreen="diary-mood"     initialSession={demoSession} initialDraft={{}}/></Phone></DCArtboard>
+        <DCArtboard id="d-kw"      label="15 일기 · 키워드"    width={410} height={864}><Phone><MiniApp initialScreen="diary-keyword"  initialSession={demoSession} initialDraft={demoDraft}/></Phone></DCArtboard>
+        <DCArtboard id="d-q"       label="16 일기 · 깊은 질문" width={410} height={864}><Phone><MiniApp initialScreen="diary-question" initialSession={demoSession} initialDraft={demoDraft}/></Phone></DCArtboard>
+        <DCArtboard id="d-memo"    label="17 일기 · 자유 메모" width={410} height={864}><Phone><MiniApp initialScreen="diary-memo"     initialSession={demoSession} initialDraft={demoDraft}/></Phone></DCArtboard>
+      </DCSection>
+
+      <DCSection id="detail" title="5. 상세 화면 (4)">
+        <DCArtboard id="d-detail"   label="18 일기 상세"      width={410} height={864}><Phone><MiniApp initialScreen="diary-detail"   initialSession={demoSession}/></Phone></DCArtboard>
+        <DCArtboard id="r-detail"   label="19 루틴 상세"      width={410} height={864}><Phone><MiniApp initialScreen="routine-detail" initialSession={demoSession}/></Phone></DCArtboard>
+        <DCArtboard id="r-add"      label="20 루틴 추가"      width={410} height={864}><Phone><MiniApp initialScreen="routine-add"    initialSession={demoSession}/></Phone></DCArtboard>
+        <DCArtboard id="p-edit"     label="21 프로필 편집"    width={410} height={864}><Phone><MiniApp initialScreen="profile-edit"   initialSession={demoSession}/></Phone></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>

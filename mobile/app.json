@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Bridge",
+    "slug": "bridge",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF8FF"
+    },
+    "ios": { "supportsTablet": false, "bundleIdentifier": "app.bridge.mobile" },
+    "android": {
+      "package": "app.bridge.mobile",
+      "adaptiveIcon": { "foregroundImage": "./assets/adaptive-icon.png", "backgroundColor": "#FAF8FF" }
+    },
+    "plugins": ["expo-secure-store", "expo-font"]
+  }
+}
