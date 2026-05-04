@@ -23,7 +23,10 @@ import type {
 import type { WeeklyReportData, MonthlyReportData, MoodTrendData } from '@/types/report';
 import type { WeeklyMissionData, TotalMissionData } from '@/types/mission';
 
-export const API_BASE_URL = 'http://localhost:8000/v1';
+// 운영 빌드는 EXPO_PUBLIC_API_URL 환경변수(https://...)로 주입.
+// 로컬 개발 시 fallback은 http://localhost:8000/v1.
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/v1';
 const TOKEN_KEY = 'bridge.access_token';
 const REFRESH_KEY = 'bridge.refresh_token';
 const USER_KEY = 'bridge.user';
@@ -35,8 +38,20 @@ export async function clearToken()                      { return SecureStore.del
 export async function getRefreshToken()                 { return SecureStore.getItemAsync(REFRESH_KEY); }
 export async function setRefreshToken(t: string)        { return SecureStore.setItemAsync(REFRESH_KEY, t); }
 export async function clearRefreshToken()               { return SecureStore.deleteItemAsync(REFRESH_KEY); }
-export async function getStoredUser()                   { const v = await SecureStore.getItemAsync(USER_KEY); return v ? JSON.parse(v) as UserMe : null; }
-export async function setStoredUser(u: UserMe)          { return SecureStore.setItemAsync(USER_KEY, JSON.stringify(u)); }
+// 도메인 원칙: email 원문은 백엔드에서만 보관(hash 분리). 클라이언트 SecureStore에는 식별 최소 정보만 저장.
+export type StoredUser = Omit<UserMe, 'email'>;
+export async function getStoredUser(): Promise<StoredUser | null> {
+  const v = await SecureStore.getItemAsync(USER_KEY);
+  return v ? (JSON.parse(v) as StoredUser) : null;
+}
+export async function setStoredUser(u: UserMe) {
+  const stored: StoredUser = {
+    user_id: u.user_id,
+    nickname: u.nickname,
+    requires_assessment: u.requires_assessment,
+  };
+  return SecureStore.setItemAsync(USER_KEY, JSON.stringify(stored));
+}
 export async function clearStoredUser()                 { return SecureStore.deleteItemAsync(USER_KEY); }
 
 export const api: AxiosInstance = axios.create({

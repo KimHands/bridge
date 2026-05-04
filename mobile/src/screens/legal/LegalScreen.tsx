@@ -3,7 +3,6 @@ import { View, Text, ScrollView, StyleSheet } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RouteProp } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import type { RootStackParamList } from '@/navigation/Navigation';
 import { palette, fontFamily } from '@/theme/tokens';
 import { TopBar } from '@/components/BackHeader';
@@ -71,8 +70,8 @@ export default function LegalScreen() {
   const meta = LEGAL_META[route.params.kind];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: palette.bg }} edges={['top']}>
-      <TopBar onBack={() => navigation.goBack()} title={meta.title} />
+    <View style={{ flex: 1, backgroundColor: palette.bg }}>
+      <TopBar onBack={() => navigation.canGoBack() && navigation.goBack()} title={meta.title} />
       <ScrollView contentContainerStyle={s.scroll}>
         <Text style={s.subtitle}>{meta.subtitle}</Text>
         {meta.sections.map((sec, i) => (
@@ -83,7 +82,7 @@ export default function LegalScreen() {
         ))}
         <Text style={s.footer}>본 안내는 모바일 화면용 요약본입니다. 전문은 회사 웹사이트 또는 docs/Bridge_개인정보처리방침.md를 참고해 주세요.</Text>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 

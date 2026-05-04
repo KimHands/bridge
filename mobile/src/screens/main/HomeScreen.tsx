@@ -3,8 +3,10 @@ import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-nati
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import type { RootStackParamList } from '@/navigation/Navigation';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { RootStackParamList, MainTabParamList } from '@/navigation/Navigation';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, fontFamily, moodMeta } from '@/theme/tokens';
 import { Card, Pill } from '@/components/atoms';
@@ -15,7 +17,10 @@ import { useDiaryList } from '@/hooks/useDiaryQueries';
 import { useStartDiary } from '@/hooks/useStartDiary';
 import { routineEmoji } from '@/lib/routineEmoji';
 
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Nav = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Home'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 // 5단계 mood_score 척도와 일치 (도메인 정의)
 const MOODS = [
@@ -29,7 +34,7 @@ const MOODS = [
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const user = useAuth(s => s.user);
-  const { data: routines = [] } = useRoutineList();
+  const { data: routinesData } = useRoutineList();
   const { data: diariesData } = useDiaryList();
   const startDiary = useStartDiary();
 
@@ -37,8 +42,8 @@ export default function HomeScreen() {
   const dateStr = `${today.getMonth() + 1}월 ${today.getDate()}일`;
   const weekDay = ['일','월','화','수','목','금','토'][today.getDay()];
 
-  const routineList: any[] = (routines as any)?.routines ?? (Array.isArray(routines) ? routines : []);
-  const done = routineList.filter(r => r.is_completed_today ?? r.done_today).length;
+  const routineList = routinesData?.routines ?? [];
+  const done = routineList.filter(r => r.is_completed_today).length;
   const totalCount = routineList.length || 4;
   const pct = totalCount > 0 ? (done / totalCount) * 100 : 50;
 
@@ -96,7 +101,7 @@ export default function HomeScreen() {
         <Card style={{ marginTop: 14 }}>
           <View style={s.cardHeader}>
             <Text style={s.sectionTitle}>오늘의 루틴</Text>
-            <Pressable onPress={() => (navigation as any).navigate('Routine')}>
+            <Pressable onPress={() => navigation.navigate('Routine')}>
               <Text style={s.link}>전체보기 →</Text>
             </Pressable>
           </View>
@@ -116,12 +121,12 @@ export default function HomeScreen() {
             {routineList.length === 0 ? (
               <Text style={s.emptyHint}>아직 추가된 루틴이 없어요.</Text>
             ) : (
-              routineList.slice(0, 2).map((r: any) => {
-                const isDone = r.is_completed_today ?? r.done_today ?? false;
+              routineList.slice(0, 2).map((r) => {
+                const isDone = r.is_completed_today;
                 return (
-                  <View key={r.user_routine_id ?? r.id} style={s.routineLine}>
+                  <View key={r.user_routine_id} style={s.routineLine}>
                     <View style={[s.routineIcon, { backgroundColor: palette.bgAlt }]}>
-                      <Text style={{ fontSize: 14, lineHeight: 18 }}>{routineEmoji(r.title ?? '')}</Text>
+                      <Text style={{ fontSize: 14, lineHeight: 18 }}>{routineEmoji(r.title)}</Text>
                     </View>
                     <Text style={[s.routineName, isDone && s.routineDone]}>{r.title}</Text>
                     <View style={[s.checkCircle, { backgroundColor: isDone ? palette.primary : 'transparent', borderColor: isDone ? palette.primary : palette.borderStrong }]}>
@@ -137,7 +142,7 @@ export default function HomeScreen() {
         {/* Recent diary */}
         <View style={s.cardHeader}>
           <Text style={s.sectionTitle}>최근 일기</Text>
-          <Pressable onPress={() => (navigation as any).navigate('Diary')}>
+          <Pressable onPress={() => navigation.navigate('Diary')}>
             <Text style={s.link}>전체보기 →</Text>
           </Pressable>
         </View>

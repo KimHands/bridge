@@ -38,16 +38,19 @@ export default function DiaryDetailScreen() {
     );
   }
 
+  const safeBack = () => { if (navigation.canGoBack()) navigation.goBack(); };
+  const safeHome = () => { if (navigation.isFocused() && navigation.canGoBack()) navigation.popToTop(); };
+
   if (isError || !entry) {
     return (
       <View style={{ flex: 1, backgroundColor: palette.bg }}>
-        <TopBar onBack={() => navigation.goBack()} title="일기" />
+        <TopBar onBack={safeBack} title="일기" />
         <View style={s.empty}>
           <Text style={s.emptyTitle}>일기를 불러올 수 없어요</Text>
           <Text style={s.emptySub}>잠시 후 다시 시도해 주세요.</Text>
         </View>
         <BottomCTA>
-          <Pressable onPress={() => navigation.popToTop()} style={s.homeBtn}>
+          <Pressable onPress={safeHome} style={s.homeBtn}>
             <Text style={s.homeBtnText}>홈으로 돌아가기</Text>
           </Pressable>
         </BottomCTA>
@@ -72,7 +75,7 @@ export default function DiaryDetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
       <TopBar
-        onBack={() => navigation.goBack()}
+        onBack={safeBack}
         title="일기"
       />
       <ScrollView contentContainerStyle={s.scroll}>
@@ -122,7 +125,7 @@ export default function DiaryDetailScreen() {
 
       <BottomCTA>
         <Pressable
-          onPress={() => navigation.popToTop()}
+          onPress={safeHome}
           style={s.homeBtn}
         >
           <Text style={s.homeBtnText}>홈으로 돌아가기</Text>

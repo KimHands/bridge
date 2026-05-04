@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/navigation/Navigation';
@@ -76,13 +76,14 @@ export default function AssessmentScreen({ navigation, route }: Props) {
         const history = await assessments.latest();
         if (cancelled) return;
         if (history.length === 0) {
-          navigation.replace('Assessment');
+          // viewMode인데 이력이 없으면 평가 시작 화면으로 전환 (mode 파라미터 명시적으로 해제)
+          navigation.replace('Assessment', undefined);
           return;
         }
         setViewTier(history[0].phq9_level);
         setShowResult(true);
       } catch {
-        if (!cancelled) navigation.goBack();
+        if (!cancelled && navigation.canGoBack()) navigation.goBack();
       } finally {
         if (!cancelled) setViewLoading(false);
       }
@@ -101,11 +102,17 @@ export default function AssessmentScreen({ navigation, route }: Props) {
     );
   }
 
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+  }, []);
+
   const selectAnswer = (score: number) => {
     const next = [...answers];
     next[step] = score;
     setAnswers(next);
-    setTimeout(() => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+    advanceTimerRef.current = setTimeout(() => {
       if (step < QUESTIONS.length - 1) setStep(step + 1);
       else setStep(9); // go to cause selection
     }, 250);

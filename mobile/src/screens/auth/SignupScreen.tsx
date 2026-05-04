@@ -45,7 +45,7 @@ export default function SignupScreen({ navigation }: Props) {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <TopBar onBack={() => navigation.goBack()}/>
+      <TopBar onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined}/>
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         <Text style={s.title}>Bridge 시작하기</Text>
         <Text style={s.sub}>평온한 내일을 위한 첫 걸음을{'\n'}브릿지와 함께 시작해보세요.</Text>

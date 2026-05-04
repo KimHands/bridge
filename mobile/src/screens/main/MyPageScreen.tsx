@@ -37,7 +37,7 @@ export default function MyPageScreen() {
 
   const totalScore = weeklyMission?.total_score ?? 0;
   const level = scoreToLevel(totalScore);
-  const diaryCount = Array.isArray(diaryList) ? diaryList.length : 0;
+  const diaryCount = diaryList?.items?.length ?? 0;
   const routineDays = weeklyMission?.routine_days ?? 0;
 
   const handleLogout = async () => {

@@ -68,12 +68,14 @@ export default function DiaryMemoScreen() {
               onPress: async () => {
                 try {
                   const status = await diaryApi.todayStatus();
-                  if (status.diary_id) {
+                  if (status.diary_id && navigation.isFocused()) {
                     reset();
                     navigation.replace('DiaryDetail', { entryId: status.diary_id });
                   }
                 } catch (err) {
-                  Alert.alert('오류', getApiError(err).message);
+                  if (navigation.isFocused()) {
+                    Alert.alert('오류', getApiError(err).message);
+                  }
                 }
               },
             },

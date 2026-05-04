@@ -14,8 +14,6 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const DAYS = ['월','화','수','목','금','토','일'];
 
-const MOCK = { id: '1', emoji: '🧘', title: '아침 명상', time: '07:30', duration: '5분', streak: 12, done_today: true };
-
 export default function RoutineDetailScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<RouteProp<RootStackParamList, 'RoutineDetail'>>();
@@ -23,52 +21,57 @@ export default function RoutineDetailScreen() {
   const deleteRoutine = useDeleteRoutine();
 
   const { data } = useRoutineList();
-  const rawList: any[] = (data as any)?.routines ?? (Array.isArray(data) ? data : []);
-  const found = rawList.find(x => String(x.user_routine_id ?? x.id) === routineId);
-  const r = found ?? MOCK;
-  const displayEmoji = r.emoji ?? routineEmoji(r.title ?? '');
+  const r = data?.routines.find(x => x.user_routine_id === routineId);
+
+  const safeBack = () => { if (navigation.canGoBack()) navigation.goBack(); };
 
   const handleDelete = () => {
+    if (!r) return;
     Alert.alert('루틴 삭제', `"${r.title}"을(를) 삭제할까요?`, [
       { text: '취소', style: 'cancel' },
       {
         text: '삭제', style: 'destructive',
         onPress: async () => {
           await deleteRoutine.mutateAsync(routineId);
-          navigation.goBack();
+          if (navigation.isFocused() && navigation.canGoBack()) navigation.goBack();
         },
       },
     ]);
   };
 
+  if (!r) {
+    return (
+      <View style={{ flex: 1, backgroundColor: palette.bg }}>
+        <TopBar onBack={safeBack} title="루틴 상세"/>
+        <View style={s.empty}>
+          <Text style={s.emptyTitle}>루틴을 찾을 수 없어요</Text>
+          <Text style={s.emptySub}>이미 삭제되었거나 만료된 루틴이에요.</Text>
+        </View>
+      </View>
+    );
+  }
+
+  const displayEmoji = routineEmoji(r.title);
+  const todayIdx = (new Date().getDay() + 6) % 7; // 일=0 → 토=6 → 월=0 보정
+
   return (
     <View style={{ flex: 1, backgroundColor: palette.bg }}>
-      <TopBar onBack={() => navigation.goBack()} title="루틴 상세"/>
+      <TopBar onBack={safeBack} title="루틴 상세"/>
       <ScrollView contentContainerStyle={s.scroll}>
         {/* Header card */}
         <Card style={{ borderRadius: 20, alignItems: 'center' }}>
           <View style={s.emojiBox}><Text style={{ fontSize: 36, lineHeight: 44 }}>{displayEmoji}</Text></View>
           <Text style={s.routineTitle}>{r.title}</Text>
-          <Text style={s.routineSub}>매일 {r.time} · {r.duration}</Text>
+          {r.description ? <Text style={s.routineSub}>{r.description}</Text> : null}
         </Card>
 
-        {/* Streak card */}
-        <Card style={{ marginTop: 14, backgroundColor: palette.primary }}>
-          <Text style={s.streakLabel}>CURRENT STREAK</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, marginTop: 8 }}>
-            <Text style={s.streakNum}>🔥 {r.streak}</Text>
-            <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.85)' }}>일 연속</Text>
-          </View>
-          <Text style={s.streakSub}>대단해요! 7일만 더 하면 30일 배지를 받아요.</Text>
-        </Card>
-
-        {/* Weekly grid */}
+        {/* Weekly grid — 오늘 완료 여부만 실데이터, 나머지는 시각 placeholder */}
         <Card style={{ marginTop: 14 }}>
           <Text style={s.sectionTitle}>이번 주 달성</Text>
           <View style={s.weekRow}>
             {DAYS.map((d, i) => {
-              const done = i < 5;
-              const isToday = i === 5;
+              const isToday = i === todayIdx;
+              const done = isToday && r.is_completed_today;
               return (
                 <View key={i} style={{ alignItems: 'center', gap: 8 }}>
                   <View style={[s.dayCircle, {
@@ -87,12 +90,11 @@ export default function RoutineDetailScreen() {
           </View>
         </Card>
 
-        {/* Settings */}
+        {/* Settings — 시간/알림은 백엔드 미구현이라 placeholder */}
         <Card style={{ marginTop: 14, padding: 4 }}>
-          <Row label="시간" value={r.time}/>
           <Row label="요일" value="매일"/>
-          <Row label="알림" value="ON"/>
-          <Row label="메모" value="—"/>
+          <Row label="알림" value="—"/>
+          <Row label="설명" value={r.description || '—'}/>
         </Card>
 
         <Pressable onPress={handleDelete} style={s.deleteBtn}>
@@ -118,10 +120,7 @@ const s = StyleSheet.create({
   scroll: { padding: 24, paddingTop: 16, paddingBottom: 40 },
   emojiBox: { width: 72, height: 72, borderRadius: 20, backgroundColor: palette.primaryBgSoft, alignItems: 'center', justifyContent: 'center' },
   routineTitle: { marginTop: 16, fontSize: 22, fontWeight: '800', color: palette.textHeading },
-  routineSub: { marginTop: 6, fontSize: 13, color: palette.textCaption },
-  streakLabel: { fontSize: 12, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.2, fontWeight: '600', fontFamily: fontFamily.enBold },
-  streakNum: { fontSize: 36, fontWeight: '800', color: '#fff', fontFamily: fontFamily.enBold },
-  streakSub: { marginTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.85)' },
+  routineSub: { marginTop: 6, fontSize: 13, color: palette.textCaption, textAlign: 'center', paddingHorizontal: 12 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: palette.textHeading },
   weekRow: { marginTop: 14, flexDirection: 'row', justifyContent: 'space-between' },
   dayCircle: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
@@ -130,4 +129,7 @@ const s = StyleSheet.create({
   rowValue: { fontSize: 13, color: palette.textCaption },
   deleteBtn: { marginTop: 20, alignItems: 'center', paddingVertical: 14 },
   deleteBtnText: { fontSize: 13, fontWeight: '600', color: palette.danger },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: palette.textHeading, letterSpacing: -0.4 },
+  emptySub: { marginTop: 8, fontSize: 13, color: palette.textCaption, textAlign: 'center' },
 });

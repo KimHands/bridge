@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-04T00:01:56.797Z",
+  "lastUpdated": "2026-05-04T02:08:05.159Z",
   "activeFeatures": [
     "core",
     "backend",
@@ -165,9 +165,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-27T08:36:06.061Z",
-        "lastUpdated": "2026-05-04T00:01:52.545Z"
+        "lastUpdated": "2026-05-04T02:01:48.085Z"
       },
-      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/auth/SignupScreen.tsx"
+      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/auth/AssessmentScreen.tsx"
     },
     "main": {
       "phase": "do",
@@ -178,9 +178,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-27T08:39:59.314Z",
-        "lastUpdated": "2026-05-04T00:01:56.797Z"
+        "lastUpdated": "2026-05-04T02:02:24.177Z"
       },
-      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/main/MyPageScreen.tsx"
+      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/main/HomeScreen.tsx"
     },
     "diary": {
       "phase": "do",
@@ -191,7 +191,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-27T08:42:21.715Z",
-        "lastUpdated": "2026-05-03T23:52:22.349Z"
+        "lastUpdated": "2026-05-04T02:01:00.285Z"
       },
       "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/diary/DiaryMemoScreen.tsx"
     },
@@ -204,9 +204,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-27T08:44:09.971Z",
-        "lastUpdated": "2026-05-03T23:50:27.424Z"
+        "lastUpdated": "2026-05-04T02:01:26.978Z"
       },
-      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/routine/RoutineAddScreen.tsx"
+      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/routine/RoutineDetailScreen.tsx"
     },
     "my": {
       "phase": "do",
@@ -269,9 +269,9 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-03T19:53:56.575Z",
-        "lastUpdated": "2026-05-03T23:53:27.530Z"
+        "lastUpdated": "2026-05-04T02:02:03.572Z"
       },
-      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/lib/routineEmoji.ts"
+      "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/lib/api.ts"
     },
     "legal": {
       "phase": "do",
@@ -282,7 +282,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-04T00:01:19.158Z",
-        "lastUpdated": "2026-05-04T00:01:19.158Z"
+        "lastUpdated": "2026-05-04T02:08:05.159Z"
       },
       "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/legal/LegalScreen.tsx"
     }
@@ -295,7 +295,7 @@
   "session": {
     "startedAt": "2026-04-12T12:29:46.916Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-04T00:01:56.797Z"
+    "lastActivity": "2026-05-04T02:08:05.159Z"
   },
   "history": [
     {
@@ -2425,6 +2425,156 @@
     {
       "timestamp": "2026-05-04T00:01:56.797Z",
       "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T01:50:17.031Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T01:50:19.416Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T01:51:59.601Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:00:30.808Z",
+      "feature": "mobile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:00:32.051Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:00:33.879Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:00:35.203Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:00:37.152Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:00:52.882Z",
+      "feature": "diary",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:00:54.356Z",
+      "feature": "diary",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:00:56.268Z",
+      "feature": "diary",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:01:00.285Z",
+      "feature": "diary",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:01:26.978Z",
+      "feature": "routine",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:01:39.599Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:01:44.535Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:01:48.085Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:02:03.572Z",
+      "feature": "mobile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:02:06.634Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:02:08.178Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:02:13.607Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:02:16.166Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:02:17.647Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:02:24.177Z",
+      "feature": "main",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:08:00.529Z",
+      "feature": "legal",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T02:08:05.159Z",
+      "feature": "legal",
       "phase": "do",
       "action": "updated"
     }

@@ -38,7 +38,7 @@ export default function LoginScreen({ navigation }: Props) {
   return (
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.bg }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <DecorativeBlobs/>
-      <TopBar onBack={() => navigation.goBack()} transparent/>
+      <TopBar onBack={navigation.canGoBack() ? () => navigation.goBack() : undefined} transparent/>
       <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
         <View style={s.iconBox}>
           <Svg width={32} height={32} viewBox="0 0 32 32" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -49,10 +49,10 @@ export default function LoginScreen({ navigation }: Props) {
         <Text style={s.sub}>당신의 마음을 잇는 가장 편안한 다리, 브릿지 입니다.</Text>
 
         <View style={s.fields}>
-          <Field label="Email" placeholder="이메일을 입력하세요"
+          <Field label="이메일" placeholder="이메일을 입력하세요"
                  value={email} onChangeText={setEmail} keyboardType="email-address"
                  icon={<Svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke={palette.textMuted} strokeWidth={1.5}><Rect x={2} y={3} width={12} height={10} rx={1.5}/><Path d="M2 4l6 5 6-5"/></Svg>}/>
-          <Field label="Password" placeholder="비밀번호를 입력하세요"
+          <Field label="비밀번호" placeholder="비밀번호를 입력하세요"
                  value={pw} onChangeText={setPw} secureTextEntry={!showPw}
                  icon={<Svg width={16} height={16} viewBox="0 0 16 16" fill="none" stroke={palette.textMuted} strokeWidth={1.5}><Rect x={3} y={7} width={10} height={7} rx={1.5}/><Path d="M5 7V5a3 3 0 0 1 6 0v2"/></Svg>}
                  rightSlot={
@@ -66,7 +66,7 @@ export default function LoginScreen({ navigation }: Props) {
 
         <View style={{ marginTop: 28 }}>
           <PrimaryButton onPress={submit} disabled={loading}>
-            {loading ? '로그인 중...' : 'Login'}
+            {loading ? '로그인 중...' : '로그인'}
           </PrimaryButton>
         </View>
 

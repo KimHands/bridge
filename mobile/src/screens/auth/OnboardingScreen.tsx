@@ -160,7 +160,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         <View style={{ width: 40 }}/>
         <Text style={s.logo}>Bridge</Text>
         <Pressable onPress={() => navigation.replace('Login')} hitSlop={8}>
-          <Text style={{ fontSize: 14, color: palette.textBody, fontFamily: fontFamily.en }}>Skip</Text>
+          <Text style={{ fontSize: 14, color: palette.textBody }}>건너뛰기</Text>
         </Pressable>
       </View>
 
