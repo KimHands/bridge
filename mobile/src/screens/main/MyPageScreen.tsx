@@ -13,6 +13,13 @@ import { useWeeklyMission } from '@/hooks/useMissionQueries';
 import { useQuery } from '@tanstack/react-query';
 import { diary } from '@/lib/api';
 import type { DiaryListResponse } from '@/types/diary';
+import {
+  Target, Trophy, ChartBar, Notepad,
+  Bell, Moon, Lock, Globe,
+  Question, Envelope, Scroll, ShieldCheck, Megaphone,
+} from 'phosphor-react-native';
+
+const ICON_PROPS = { size: 18, color: palette.primary, weight: 'duotone' as const };
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -86,23 +93,23 @@ export default function MyPageScreen() {
         </View>
 
         <Section title="활동" items={[
-          { icon: '🎯', label: '내 목표', onPress: () => notImplemented('내 목표') },
-          { icon: '🏆', label: '달성 기록', badge: weeklyMission?.is_achieved ? '달성' : undefined, onPress: () => notImplemented('달성 기록') },
-          { icon: '📊', label: '이전 자가평가 결과 보기', onPress: () => navigation.navigate('Assessment', { mode: 'view' }) },
-          { icon: '📝', label: '자가평가 다시 하기', onPress: () => navigation.navigate('Assessment') },
+          { icon: <Target {...ICON_PROPS} />, label: '내 목표', onPress: () => notImplemented('내 목표') },
+          { icon: <Trophy {...ICON_PROPS} />, label: '달성 기록', badge: weeklyMission?.is_achieved ? '달성' : undefined, onPress: () => notImplemented('달성 기록') },
+          { icon: <ChartBar {...ICON_PROPS} />, label: '이전 자가평가 결과 보기', onPress: () => navigation.navigate('Assessment', { mode: 'view' }) },
+          { icon: <Notepad {...ICON_PROPS} />, label: '자가평가 다시 하기', onPress: () => navigation.navigate('Assessment') },
         ]}/>
         <Section title="설정" items={[
-          { icon: '🔔', label: '알림 설정', toggle: true, toggleOn: notifOn, onToggle: () => setNotifOn(v => !v) },
-          { icon: '🌙', label: '다크 모드', toggle: true, toggleOn: darkOn, onToggle: () => setDarkOn(v => !v) },
-          { icon: '🔒', label: '잠금 설정', onPress: () => notImplemented('잠금 설정') },
-          { icon: '🌐', label: '언어', value: '한국어', onPress: () => notImplemented('언어 설정') },
+          { icon: <Bell {...ICON_PROPS} />, label: '알림 설정', toggle: true, toggleOn: notifOn, onToggle: () => setNotifOn(v => !v) },
+          { icon: <Moon {...ICON_PROPS} />, label: '다크 모드', toggle: true, toggleOn: darkOn, onToggle: () => setDarkOn(v => !v) },
+          { icon: <Lock {...ICON_PROPS} />, label: '잠금 설정', onPress: () => notImplemented('잠금 설정') },
+          { icon: <Globe {...ICON_PROPS} />, label: '언어', value: '한국어', onPress: () => notImplemented('언어 설정') },
         ]}/>
         <Section title="고객 지원" items={[
-          { icon: '❓', label: '자주 묻는 질문', onPress: () => notImplemented('자주 묻는 질문') },
-          { icon: '✉️', label: '문의하기', onPress: () => notImplemented('문의하기') },
-          { icon: '📜', label: '이용약관', onPress: () => navigation.navigate('Legal', { kind: 'tos' }) },
-          { icon: '🔐', label: '개인정보 처리방침', onPress: () => navigation.navigate('Legal', { kind: 'privacy' }) },
-          { icon: '📣', label: '마케팅 정보 수신 동의', onPress: () => navigation.navigate('Legal', { kind: 'marketing' }) },
+          { icon: <Question {...ICON_PROPS} />, label: '자주 묻는 질문', onPress: () => notImplemented('자주 묻는 질문') },
+          { icon: <Envelope {...ICON_PROPS} />, label: '문의하기', onPress: () => notImplemented('문의하기') },
+          { icon: <Scroll {...ICON_PROPS} />, label: '이용약관', onPress: () => navigation.navigate('Legal', { kind: 'tos' }) },
+          { icon: <ShieldCheck {...ICON_PROPS} />, label: '개인정보 처리방침', onPress: () => navigation.navigate('Legal', { kind: 'privacy' }) },
+          { icon: <Megaphone {...ICON_PROPS} />, label: '마케팅 정보 수신 동의', onPress: () => navigation.navigate('Legal', { kind: 'marketing' }) },
         ]}/>
 
         <Pressable onPress={handleLogout} style={s.logoutBtn}>
@@ -138,7 +145,7 @@ function Section({ title, items }: { title: string; items: any[] }) {
             style={[s.row, i > 0 && s.rowBorder]}
           >
             <View style={s.rowIcon}>
-              <Text style={{ fontSize: 14, lineHeight: 18 }}>{it.icon}</Text>
+              {it.icon}
             </View>
             <Text style={s.rowLabel}>{it.label}</Text>
             {it.badge && (

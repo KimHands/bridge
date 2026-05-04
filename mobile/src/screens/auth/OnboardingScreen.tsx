@@ -7,9 +7,13 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Svg, { Path } from 'react-native-svg';
 import type { RootStackParamList } from '@/navigation/Navigation';
 import { palette, fontFamily } from '@/theme/tokens';
+import type { MoodId } from '@/theme/tokens';
 import { PrimaryButton, Card } from '@/components/atoms';
 import { DecorativeBlobs } from '@/components/BackHeader';
 import CircleGauge from '@/components/CircleGauge';
+import { MoodIcon } from '@/lib/moodIcon';
+import { RoutineIcon } from '@/lib/routineIcon';
+import { ChartLineUp } from 'phosphor-react-native';
 
 const { width: SW } = Dimensions.get('window');
 type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding'>;
@@ -24,13 +28,13 @@ function Page1() {
           <Text style={s.label}>SELECT MOOD</Text>
           <Text style={s.cardTitle}>오늘 기분이 어떠신가요?</Text>
           <View style={s.moodGrid}>
-            {[
-              { icon: '😭', label: '매우 나쁨', tone: 'ghost' },
-              { icon: '😢', label: '나쁨',     tone: 'ghost' },
-              { icon: '😐', label: '보통',     tone: 'ghost' },
-              { icon: '🙂', label: '좋음',     tone: 'mint' },
-              { icon: '😊', label: '매우 좋음', tone: 'purple', selected: true },
-            ].map((m, i) => {
+            {([
+              { id: 'verybad',  label: '매우 나쁨', tone: 'ghost' },
+              { id: 'bad',      label: '나쁨',     tone: 'ghost' },
+              { id: 'normal',   label: '보통',     tone: 'ghost' },
+              { id: 'good',     label: '좋음',     tone: 'mint' },
+              { id: 'verygood', label: '매우 좋음', tone: 'purple', selected: true },
+            ] as { id: MoodId; label: string; tone: string; selected?: boolean }[]).map((m, i) => {
               const tones: Record<string, { bg: string; fg: string; border: string }> = {
                 mint:   { bg: palette.mintBgSoft, fg: palette.mintDeep, border: 'transparent' },
                 purple: { bg: palette.primaryBgSoft, fg: palette.primary, border: palette.primary },
@@ -39,7 +43,7 @@ function Page1() {
               const t = tones[m.tone];
               return (
                 <View key={i} style={[s.moodCard, { backgroundColor: t.bg, borderColor: m.selected ? t.border : 'transparent' }]}>
-                  <Text style={{ fontSize: 22 }}>{m.icon}</Text>
+                  <MoodIcon id={m.id} size={28} color={t.fg} />
                   <Text style={{ fontSize: 13, fontWeight: '600', color: t.fg }}>{m.label}</Text>
                 </View>
               );
@@ -65,13 +69,13 @@ function Page2() {
           <Text style={[s.cardTitle, { marginTop: 4 }]}>오늘의 루틴</Text>
           <View style={{ marginTop: 16, gap: 10 }}>
             {[
-              { icon: '🧘', title: '아침 명상', sub: '5분 · 마음 챙김', done: true },
-              { icon: '💧', title: '미지근한 물 한 잔', sub: '매일 아침 · 수분 공급', highlight: true },
-              { icon: '🚶', title: '가벼운 스트레칭', sub: '10분 · 몸 풀기' },
+              { title: '아침 명상', sub: '5분 · 마음 챙김', done: true },
+              { title: '미지근한 물 한 잔', sub: '매일 아침 · 수분 공급', highlight: true },
+              { title: '가벼운 스트레칭', sub: '10분 · 몸 풀기' },
             ].map((r, i) => (
               <View key={i} style={[s.routineRow, r.highlight && { backgroundColor: palette.primary }]}>
                 <View style={[s.routineIcon, { backgroundColor: r.highlight ? 'rgba(255,255,255,0.18)' : palette.bgAlt }]}>
-                  <Text style={{ fontSize: 18 }}>{r.icon}</Text>
+                  <RoutineIcon title={r.title} size={22} color={r.highlight ? '#fff' : palette.primary} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 14, fontWeight: '700', color: r.highlight ? '#fff' : palette.textHeading }}>{r.title}</Text>
@@ -110,7 +114,7 @@ function Page3() {
               <Text style={s.label}>WEEKLY INSIGHTS</Text>
               <Text style={[s.cardTitle, { marginTop: 4 }]}>주간 리포트</Text>
             </View>
-            <View style={s.iconBox}><Text style={{ fontSize: 18 }}>📈</Text></View>
+            <View style={s.iconBox}><ChartLineUp size={20} color={palette.primary} weight="duotone" /></View>
           </View>
           <View style={{ marginTop: 24, height: 90, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', paddingHorizontal: 4 }}>
             {bars.map((v, i) => (

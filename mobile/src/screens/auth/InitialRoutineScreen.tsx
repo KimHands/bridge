@@ -8,7 +8,8 @@ import { TopBar } from '@/components/BackHeader';
 import BottomCTA from '@/components/BottomCTA';
 import { useAuth } from '@/store/auth';
 import { useRoutineList } from '@/hooks/useRoutineQueries';
-import { routineEmoji } from '@/lib/routineEmoji';
+import { RoutineIcon } from '@/lib/routineIcon';
+import { Plant } from 'phosphor-react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'InitialRoutine'>;
 
@@ -41,7 +42,7 @@ export default function InitialRoutineScreen({ navigation }: Props) {
           </View>
         ) : routines.length === 0 ? (
           <View style={{ marginTop: 40, alignItems: 'center' }}>
-            <Text style={{ fontSize: 36, marginBottom: 12 }}>🌱</Text>
+            <View style={{ marginBottom: 12 }}><Plant size={48} color={palette.primary} weight="duotone" /></View>
             <Text style={{ fontSize: 14, color: palette.textCaption, textAlign: 'center' }}>
               루틴을 불러오는 중이에요.{'\n'}잠시 후 시작 버튼을 눌러주세요.
             </Text>
@@ -51,7 +52,7 @@ export default function InitialRoutineScreen({ navigation }: Props) {
             {routines.map((r: any) => (
               <Card key={r.user_routine_id} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <View style={s.iconBox}>
-                  <Text style={{ fontSize: 26 }}>{routineEmoji(r.title)}</Text>
+                  <RoutineIcon title={r.title} size={32} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.routineTitle}>{r.title}</Text>

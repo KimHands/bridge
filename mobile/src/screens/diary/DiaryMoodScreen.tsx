@@ -9,17 +9,12 @@ import StepProgress from '@/components/StepProgress';
 import BottomCTA from '@/components/BottomCTA';
 import { useDiaryDraft } from '@/store/diaryDraft';
 import type { MoodId } from '@/theme/tokens';
+import { MoodIcon } from '@/lib/moodIcon';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 // 5단계 mood_score 척도 (매우 나쁨 1 ~ 매우 좋음 5)
-const MOODS: { id: MoodId; emoji: string }[] = [
-  { id: 'verybad',  emoji: '😭' },
-  { id: 'bad',      emoji: '😢' },
-  { id: 'normal',   emoji: '😐' },
-  { id: 'good',     emoji: '🙂' },
-  { id: 'verygood', emoji: '😊' },
-];
+const MOOD_IDS: MoodId[] = ['verybad', 'bad', 'normal', 'good', 'verygood'];
 
 export default function DiaryMoodScreen() {
   const navigation = useNavigation<Nav>();
@@ -39,16 +34,16 @@ export default function DiaryMoodScreen() {
         <Text style={s.sub}>가장 가까운 감정 하나를 선택해주세요.</Text>
 
         <View style={s.grid}>
-          {MOODS.map(m => {
-            const meta = moodMeta[m.id];
-            const sel = mood === m.id;
+          {MOOD_IDS.map(id => {
+            const meta = moodMeta[id];
+            const sel = mood === id;
             return (
               <Pressable
-                key={m.id}
-                onPress={() => set({ mood: m.id })}
+                key={id}
+                onPress={() => set({ mood: id })}
                 style={[s.moodCard, { backgroundColor: sel ? meta.bg : '#fff', borderColor: sel ? meta.color : 'transparent' }]}
               >
-                <Text style={{ fontSize: 36 }}>{m.emoji}</Text>
+                <MoodIcon id={id} size={48} color={sel ? meta.color : palette.textCaption} />
                 <Text style={[s.moodLabel, { color: sel ? meta.color : palette.textHeading }]}>{meta.label}</Text>
               </Pressable>
             );

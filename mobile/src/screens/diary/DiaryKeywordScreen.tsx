@@ -10,6 +10,7 @@ import BottomCTA from '@/components/BottomCTA';
 import { useDiaryDraft } from '@/store/diaryDraft';
 import { useEmotionKeywords } from '@/hooks/useDiaryQueries';
 import { MOOD_TO_SCORE, type MoodKey } from '@/lib/api';
+import { Lightbulb } from 'phosphor-react-native';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -66,7 +67,7 @@ export default function DiaryKeywordScreen() {
         </View>
 
         <View style={s.tip}>
-          <Text style={{ fontSize: 18 }}>💡</Text>
+          <Lightbulb size={20} color={palette.primary} weight="duotone" />
           <Text style={s.tipText}>지금 기분에 어울리는 키워드를 추천해드려요. 자유롭게 골라보세요.</Text>
         </View>
         <View style={{ height: 100 }}/>

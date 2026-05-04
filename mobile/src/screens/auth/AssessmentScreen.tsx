@@ -7,6 +7,8 @@ import { PrimaryButton, Card } from '@/components/atoms';
 import { TopBar, DecorativeBlobs } from '@/components/BackHeader';
 import { assessments } from '@/lib/api';
 import type { CauseCode, AssessmentTier } from '@/types/assessment';
+import { CauseIcon } from '@/lib/causeIcon';
+import { Plant } from 'phosphor-react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Assessment'>;
 
@@ -28,14 +30,14 @@ const OPTIONS = [
   { score: 3, label: '거의 매일' },
 ];
 
-const CAUSES: { code: CauseCode; label: string; emoji: string }[] = [
-  { code: 'sleep',        label: '수면 문제',     emoji: '😴' },
-  { code: 'academic',     label: '학업·업무',     emoji: '📚' },
-  { code: 'future',       label: '미래·진로',     emoji: '🔮' },
-  { code: 'financial',    label: '경제적 걱정',   emoji: '💸' },
-  { code: 'relationship', label: '대인관계',      emoji: '👥' },
-  { code: 'physical',     label: '신체 건강',     emoji: '💪' },
-  { code: 'unknown',      label: '잘 모르겠음',  emoji: '🤔' },
+const CAUSES: { code: CauseCode; label: string }[] = [
+  { code: 'sleep',        label: '수면 문제' },
+  { code: 'academic',     label: '학업·업무' },
+  { code: 'future',       label: '미래·진로' },
+  { code: 'financial',    label: '경제적 걱정' },
+  { code: 'relationship', label: '대인관계' },
+  { code: 'physical',     label: '신체 건강' },
+  { code: 'unknown',      label: '잘 모르겠음' },
 ];
 
 const RESULT_NOTES = [
@@ -158,7 +160,7 @@ export default function AssessmentScreen({ navigation, route }: Props) {
         <DecorativeBlobs/>
         <TopBar onBack={isViewMode ? () => navigation.goBack() : undefined} transparent={!isViewMode}/>
         <View style={s.resultCenter}>
-          <View style={s.resultIcon}><Text style={{ fontSize: 42 }}>🌱</Text></View>
+          <View style={s.resultIcon}><Plant size={56} color={palette.primary} weight="duotone" /></View>
           <Text style={s.resultLabel}>자가평가 결과</Text>
           <Text style={s.resultShort}>{note.short}</Text>
         </View>
@@ -203,7 +205,9 @@ export default function AssessmentScreen({ navigation, route }: Props) {
                 disabled={loading}
                 style={[isLast ? s.causeBtnFull : s.causeBtn, loading && { opacity: 0.5 }]}
               >
-                <View style={isLast ? s.causeIconBoxSmall : s.causeIconBox} />
+                <View style={isLast ? s.causeIconBoxSmall : s.causeIconBox}>
+                  <CauseIcon code={c.code} size={isLast ? 28 : 36} />
+                </View>
                 <Text style={[s.causeLabel, isLast && s.causeLabelFull]}>{c.label}</Text>
               </Pressable>
             );
@@ -281,6 +285,8 @@ const s = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: palette.primaryBgSoft,
     marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   causeLabel: {
     fontSize: 16,
@@ -309,6 +315,8 @@ const s = StyleSheet.create({
     height: 48,
     borderRadius: 14,
     backgroundColor: palette.primaryBgSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   causeLabelFull: {
     textAlign: 'left',

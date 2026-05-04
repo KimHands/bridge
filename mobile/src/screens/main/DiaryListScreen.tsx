@@ -11,18 +11,20 @@ import { Card, Pill } from '@/components/atoms';
 import { useDiaryList } from '@/hooks/useDiaryQueries';
 import { useStartDiary } from '@/hooks/useStartDiary';
 import type { DiaryListItem, MoodScore } from '@/types/diary';
+import { MoodIcon } from '@/lib/moodIcon';
+import type { MoodId } from '@/theme/tokens';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 type FilterKey = 'all' | MoodScore;
 
-const FILTERS: { k: FilterKey; l: string }[] = [
+const FILTERS: { k: FilterKey; l: string; mood?: MoodId }[] = [
   { k: 'all', l: '전체' },
-  { k: 1,     l: '😭 매우 나쁨' },
-  { k: 2,     l: '😢 나쁨' },
-  { k: 3,     l: '😐 보통' },
-  { k: 4,     l: '🙂 좋음' },
-  { k: 5,     l: '😊 매우 좋음' },
+  { k: 1,     l: '매우 나쁨', mood: 'verybad' },
+  { k: 2,     l: '나쁨',     mood: 'bad' },
+  { k: 3,     l: '보통',     mood: 'normal' },
+  { k: 4,     l: '좋음',     mood: 'good' },
+  { k: 5,     l: '매우 좋음', mood: 'verygood' },
 ];
 
 const SCORE_TO_MOOD_KEY: Record<MoodScore, keyof typeof moodMeta> = {
@@ -67,11 +69,17 @@ export default function DiaryListScreen() {
       {/* Filter chips */}
       <View style={{ height: 56 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filterRow}>
-          {FILTERS.map(f => (
-            <Pressable key={String(f.k)} onPress={() => setFilter(f.k)} style={[s.chip, filter === f.k && s.chipActive]}>
-              <Text style={[s.chipText, filter === f.k && s.chipActiveText]}>{f.l}</Text>
-            </Pressable>
-          ))}
+          {FILTERS.map(f => {
+            const active = filter === f.k;
+            return (
+              <Pressable key={String(f.k)} onPress={() => setFilter(f.k)} style={[s.chip, active && s.chipActive, f.mood && { flexDirection: 'row', alignItems: 'center', gap: 6 }]}>
+                {f.mood && (
+                  <MoodIcon id={f.mood} size={16} color={active ? '#fff' : palette.textBody} />
+                )}
+                <Text style={[s.chipText, active && s.chipActiveText]}>{f.l}</Text>
+              </Pressable>
+            );
+          })}
         </ScrollView>
         {/* 가로 스크롤 우측 페이드: 추가 chip 존재 시각 hint */}
         <LinearGradient

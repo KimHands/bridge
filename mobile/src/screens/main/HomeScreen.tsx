@@ -15,7 +15,9 @@ import { useAuth } from '@/store/auth';
 import { useRoutineList } from '@/hooks/useRoutineQueries';
 import { useDiaryList } from '@/hooks/useDiaryQueries';
 import { useStartDiary } from '@/hooks/useStartDiary';
-import { routineEmoji } from '@/lib/routineEmoji';
+import { RoutineIcon } from '@/lib/routineIcon';
+import { MoodIcon } from '@/lib/moodIcon';
+import type { MoodId } from '@/theme/tokens';
 
 type Nav = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Home'>,
@@ -23,13 +25,13 @@ type Nav = CompositeNavigationProp<
 >;
 
 // 5단계 mood_score 척도와 일치 (도메인 정의)
-const MOODS = [
-  { key: 'verybad',  emoji: '😭', label: '매우 나쁨' },
-  { key: 'bad',      emoji: '😢', label: '나쁨' },
-  { key: 'normal',   emoji: '😐', label: '보통' },
-  { key: 'good',     emoji: '🙂', label: '좋음' },
-  { key: 'verygood', emoji: '😊', label: '매우 좋음' },
-] as const;
+const MOODS: { key: MoodId; label: string }[] = [
+  { key: 'verybad',  label: '매우 나쁨' },
+  { key: 'bad',      label: '나쁨' },
+  { key: 'normal',   label: '보통' },
+  { key: 'good',     label: '좋음' },
+  { key: 'verygood', label: '매우 좋음' },
+];
 
 export default function HomeScreen() {
   const navigation = useNavigation<Nav>();
@@ -90,7 +92,7 @@ export default function HomeScreen() {
           <View style={s.moodRow}>
             {MOODS.map(m => (
               <Pressable key={m.key} onPress={startDiary} style={s.moodChip}>
-                <Text style={{ fontSize: 22, lineHeight: 28 }}>{m.emoji}</Text>
+                <MoodIcon id={m.key} size={28} color={moodMeta[m.key].color} />
                 <Text style={{ fontSize: 10, color: palette.textCaption }}>{m.label}</Text>
               </Pressable>
             ))}
@@ -126,7 +128,7 @@ export default function HomeScreen() {
                 return (
                   <View key={r.user_routine_id} style={s.routineLine}>
                     <View style={[s.routineIcon, { backgroundColor: palette.bgAlt }]}>
-                      <Text style={{ fontSize: 14, lineHeight: 18 }}>{routineEmoji(r.title)}</Text>
+                      <RoutineIcon title={r.title} size={18} />
                     </View>
                     <Text style={[s.routineName, isDone && s.routineDone]}>{r.title}</Text>
                     <View style={[s.checkCircle, { backgroundColor: isDone ? palette.primary : 'transparent', borderColor: isDone ? palette.primary : palette.borderStrong }]}>

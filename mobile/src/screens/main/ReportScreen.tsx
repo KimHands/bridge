@@ -5,6 +5,7 @@ import { palette, fontFamily } from '@/theme/tokens';
 import { Card } from '@/components/atoms';
 import MoodLineChart from '@/components/MoodLineChart';
 import { useWeeklyReport, useMonthlyReport } from '@/hooks/useReportQueries';
+import { Calendar, ChartLineUp, Notebook } from 'phosphor-react-native';
 
 const PERIODS = [{ k: 'week', l: '주간' }, { k: 'month', l: '월간' }, { k: 'year', l: '연간' }] as const;
 type Period = 'week' | 'month' | 'year';
@@ -31,7 +32,7 @@ export default function ReportScreen() {
           ))}
         </View>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
-          <Text style={{ fontSize: 36 }}>📅</Text>
+          <Calendar size={48} color={palette.primary} weight="duotone" />
           <Text style={{ fontSize: 16, fontWeight: '700', color: palette.textHeading }}>연간 리포트 준비 중</Text>
           <Text style={{ fontSize: 13, color: palette.textCaption, textAlign: 'center', paddingHorizontal: 40 }}>
             더 많은 기록이 쌓이면{'\n'}연간 변화를 확인할 수 있어요.
@@ -112,7 +113,7 @@ export default function ReportScreen() {
                 <Text style={s.avgDenom}> / 5.0</Text>
               </Text>
             </View>
-            <View style={s.emojiBox}><Text style={{ fontSize: 18 }}>📈</Text></View>
+            <View style={s.emojiBox}><ChartLineUp size={20} color={palette.mintDeep} weight="duotone" /></View>
           </View>
           {chartValues.length > 0 && (
             <View style={{ marginTop: 24 }}>
@@ -167,7 +168,7 @@ export default function ReportScreen() {
         {/* Diary count summary */}
         {diaryCount !== null && (
           <Card style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-            <View style={s.emojiBox}><Text style={{ fontSize: 18 }}>📔</Text></View>
+            <View style={s.emojiBox}><Notebook size={20} color={palette.mintDeep} weight="duotone" /></View>
             <View>
               <Text style={s.cardSub}>{period === 'week' ? '이번 주' : '이번 달'} 일기</Text>
               <Text style={{ fontSize: 20, fontWeight: '800', color: palette.textHeading, fontFamily: fontFamily.enBold }}>

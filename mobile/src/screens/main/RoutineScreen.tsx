@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, fontFamily } from '@/theme/tokens';
 import { Card } from '@/components/atoms';
 import { useRoutineList, useToggleRoutine } from '@/hooks/useRoutineQueries';
-import { routineEmoji } from '@/lib/routineEmoji';
+import { RoutineIcon } from '@/lib/routineIcon';
 import type { RoutineItem } from '@/types/routine';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -74,11 +74,10 @@ export default function RoutineScreen() {
             {items.map((r) => {
               const routineId = r.user_routine_id;
               const isDone = r.is_completed_today;
-              const emoji = routineEmoji(r.title);
               return (
                 <Card key={routineId} onPress={() => navigation.navigate('RoutineDetail', { routineId: String(routineId) })} style={{ flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }}>
                   <View style={[s.emojiBox, { backgroundColor: isDone ? palette.mintBgSoft : palette.bgAlt, opacity: isDone ? 0.7 : 1 }]}>
-                    <Text style={{ fontSize: 20, lineHeight: 26 }}>{emoji}</Text>
+                    <RoutineIcon title={r.title} size={26} />
                   </View>
                   <View style={{ flex: 1, minWidth: 0 }}>
                     <Text style={[s.routineName, isDone && s.routineDone]}>{r.title}</Text>

@@ -8,7 +8,7 @@ import { palette, fontFamily } from '@/theme/tokens';
 import { Card } from '@/components/atoms';
 import { TopBar } from '@/components/BackHeader';
 import { useDeleteRoutine, useRoutineList } from '@/hooks/useRoutineQueries';
-import { routineEmoji } from '@/lib/routineEmoji';
+import { RoutineIcon } from '@/lib/routineIcon';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -51,7 +51,6 @@ export default function RoutineDetailScreen() {
     );
   }
 
-  const displayEmoji = routineEmoji(r.title);
   const todayIdx = (new Date().getDay() + 6) % 7; // 일=0 → 토=6 → 월=0 보정
 
   return (
@@ -60,7 +59,7 @@ export default function RoutineDetailScreen() {
       <ScrollView contentContainerStyle={s.scroll}>
         {/* Header card */}
         <Card style={{ borderRadius: 20, alignItems: 'center' }}>
-          <View style={s.emojiBox}><Text style={{ fontSize: 36, lineHeight: 44 }}>{displayEmoji}</Text></View>
+          <View style={s.emojiBox}><RoutineIcon title={r.title} size={44} /></View>
           <Text style={s.routineTitle}>{r.title}</Text>
           {r.description ? <Text style={s.routineSub}>{r.description}</Text> : null}
         </Card>
