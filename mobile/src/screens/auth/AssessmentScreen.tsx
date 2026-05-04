@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/navigation/Navigation';
 import { palette, fontFamily } from '@/theme/tokens';
@@ -71,19 +71,42 @@ export default function AssessmentScreen({ navigation, route }: Props) {
   useEffect(() => {
     if (!isViewMode) return;
     let cancelled = false;
+
+    const goBackSafely = () => {
+      if (cancelled) return;
+      if (navigation.canGoBack()) navigation.goBack();
+      else navigation.replace('Assessment', undefined); // 평가 시작 화면으로 폴백
+    };
+
     (async () => {
       try {
         const history = await assessments.latest();
         if (cancelled) return;
-        if (history.length === 0) {
-          // viewMode인데 이력이 없으면 평가 시작 화면으로 전환 (mode 파라미터 명시적으로 해제)
-          navigation.replace('Assessment', undefined);
+
+        // 응답이 배열이 아니거나 비어있으면 빈 이력으로 처리
+        const items = Array.isArray(history) ? history : [];
+        if (items.length === 0) {
+          Alert.alert(
+            '아직 자가평가 기록이 없어요',
+            '먼저 자가평가를 진행해주세요.',
+            [{ text: '확인', onPress: () => navigation.replace('Assessment', undefined) }],
+          );
           return;
         }
-        setViewTier(history[0].phq9_level);
+
+        const latest = items[0];
+        if (typeof latest?.phq9_level !== 'number') {
+          throw new Error('Invalid assessment data');
+        }
+        setViewTier(latest.phq9_level);
         setShowResult(true);
       } catch {
-        if (!cancelled && navigation.canGoBack()) navigation.goBack();
+        if (cancelled) return;
+        Alert.alert(
+          '결과를 불러오지 못했어요',
+          '잠시 후 다시 시도해주세요.',
+          [{ text: '확인', onPress: goBackSafely }],
+        );
       } finally {
         if (!cancelled) setViewLoading(false);
       }

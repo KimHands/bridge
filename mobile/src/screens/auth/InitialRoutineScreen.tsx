@@ -16,9 +16,9 @@ export default function InitialRoutineScreen({ navigation }: Props) {
   const { data, isLoading } = useRoutineList();
   const routines: any[] = (data as any)?.routines ?? [];
 
+  // requires_assessment=false 로 플립하면 Navigation의 Stack.Navigator가 key 변화를
+  // 감지해 새로 mount되며 Main 그룹으로 전환된다. (Navigation.tsx의 key prop 참고)
   const start = () => {
-    // Stack.Navigator가 user.requires_assessment 변화를 감지해 자동으로 Main Group으로 전환됨.
-    // navigation.reset 호출 시 현재 navigator(Auth/Assessment Group)에 'Main' 라우트가 없어 에러 발생.
     useAuth.setState(s => ({
       user: s.user ? { ...s.user, requires_assessment: false } : null,
     }));

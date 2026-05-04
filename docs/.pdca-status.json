@@ -1,6 +1,6 @@
 {
   "version": "2.0",
-  "lastUpdated": "2026-05-04T08:14:45.596Z",
+  "lastUpdated": "2026-05-04T08:50:50.912Z",
   "activeFeatures": [
     "core",
     "backend",
@@ -166,7 +166,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-27T08:36:06.061Z",
-        "lastUpdated": "2026-05-04T02:01:48.085Z"
+        "lastUpdated": "2026-05-04T08:50:50.912Z"
       },
       "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/screens/auth/AssessmentScreen.tsx"
     },
@@ -257,7 +257,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-04-28T01:46:12.806Z",
-        "lastUpdated": "2026-05-04T00:01:38.103Z"
+        "lastUpdated": "2026-05-04T08:44:20.938Z"
       },
       "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/navigation/Navigation.tsx"
     },
@@ -270,7 +270,7 @@
       "documents": {},
       "timestamps": {
         "started": "2026-05-03T19:53:56.575Z",
-        "lastUpdated": "2026-05-04T02:02:03.572Z"
+        "lastUpdated": "2026-05-04T08:50:40.154Z"
       },
       "lastFile": "/Users/kimjonggun/Desktop/Project/bridge/mobile/src/lib/api.ts"
     },
@@ -309,7 +309,7 @@
   "session": {
     "startedAt": "2026-04-12T12:29:46.916Z",
     "onboardingCompleted": false,
-    "lastActivity": "2026-05-04T08:14:45.596Z"
+    "lastActivity": "2026-05-04T08:50:50.912Z"
   },
   "history": [
     {
@@ -2619,6 +2619,54 @@
     {
       "timestamp": "2026-05-04T08:14:45.596Z",
       "feature": "scripts",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:36:37.101Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:36:38.139Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:44:13.881Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:44:15.753Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:44:20.938Z",
+      "feature": "navigation",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:50:40.154Z",
+      "feature": "mobile",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:50:42.455Z",
+      "feature": "auth",
+      "phase": "do",
+      "action": "updated"
+    },
+    {
+      "timestamp": "2026-05-04T08:50:50.912Z",
+      "feature": "auth",
       "phase": "do",
       "action": "updated"
     }

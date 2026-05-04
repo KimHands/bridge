@@ -116,9 +116,9 @@ export const assessments = {
   submit: (phq9_answers: number[], primary_cause: CauseCode): Promise<AssessmentResponse> =>
     api.post<AssessmentResponse>('/assessments', { phq9_answers, primary_cause } satisfies AssessmentRequest).then(r => r.data),
 
-  // GET /assessments  → AssessmentHistoryItem[]
+  // GET /assessments  → { items: AssessmentHistoryItem[] }  (백엔드는 items 객체로 감싸 반환)
   latest: (): Promise<AssessmentHistoryItem[]> =>
-    api.get<AssessmentHistoryItem[]>('/assessments').then(r => r.data),
+    api.get<{ items: AssessmentHistoryItem[] }>('/assessments').then(r => r.data?.items ?? []),
 };
 
 export const routines = {
