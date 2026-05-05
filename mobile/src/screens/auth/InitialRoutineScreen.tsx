@@ -17,12 +17,18 @@ export default function InitialRoutineScreen({ navigation }: Props) {
   const { data, isLoading } = useRoutineList();
   const routines: any[] = (data as any)?.routines ?? [];
 
-  // requires_assessment=false 로 플립하면 Navigation의 Stack.Navigator가 key 변화를
-  // 감지해 새로 mount되며 Main 그룹으로 전환된다. (Navigation.tsx의 key prop 참고)
+  // 두 가지 진입 경로를 모두 처리:
+  // (1) assessment 그룹: requires_assessment=true → false 로 플립하면
+  //     Navigation의 navKey가 바뀌며 Stack.Navigator가 remount → Main 으로 전환
+  // (2) main 그룹의 InitialRoutine (마이페이지에서 자가평가 재진행 등):
+  //     이미 false 라 플립으로는 화면 전환이 일어나지 않으므로 명시적 reset
   const start = () => {
-    useAuth.setState(s => ({
-      user: s.user ? { ...s.user, requires_assessment: false } : null,
-    }));
+    const u = useAuth.getState().user;
+    if (u?.requires_assessment) {
+      useAuth.setState({ user: { ...u, requires_assessment: false } });
+    } else {
+      navigation.reset({ index: 0, routes: [{ name: 'Main' as never }] });
+    }
   };
 
   return (
