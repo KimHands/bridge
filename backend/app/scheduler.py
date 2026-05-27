@@ -85,12 +85,20 @@ scheduler.add_job(
     replace_existing=True,
 )
 
-from app.services.notification import send_diary_nudges  # noqa: E402
+from app.services.notification import send_diary_nudges, send_routine_reminders  # noqa: E402
 
 # 시나리오 2: 일기 미작성 — 매일 21:00 KST = UTC 12:00
 scheduler.add_job(
     send_diary_nudges,
     CronTrigger(hour=12, minute=0, timezone="UTC"),
     id="diary_nudge",
+    replace_existing=True,
+)
+
+# 시나리오 1: 루틴 리마인더 — 매 5분
+scheduler.add_job(
+    send_routine_reminders,
+    CronTrigger(minute="*/5", timezone="UTC"),
+    id="routine_reminder",
     replace_existing=True,
 )

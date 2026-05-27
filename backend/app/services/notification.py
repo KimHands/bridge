@@ -1,7 +1,8 @@
 # backend/app/services/notification.py
 import logging
-from datetime import UTC, date as date_cls, datetime
+from datetime import UTC, date as date_cls, datetime, time, timedelta
 from typing import Literal
+from zoneinfo import ZoneInfo
 
 import httpx
 from sqlalchemy import and_, select, update
@@ -71,6 +72,8 @@ logger = logging.getLogger(__name__)
 
 EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 EXPO_BATCH_SIZE = 100
+KST = ZoneInfo("Asia/Seoul")
+ROUTINE_REMINDER_WINDOW_MINUTES = 2.5
 
 
 async def _send_to_expo(messages: list[dict]) -> list[dict]:
@@ -208,4 +211,46 @@ async def send_diary_nudges() -> None:
                 tokens=list(tokens),
                 notification_type="diary_nudge",
                 deep_link_type="diary_nudge",
+            )
+
+
+def is_within_reminder_window(reminder_time: time, now_kst: datetime) -> bool:
+    """reminder_time이 now_kst ± 2.5분 윈도우 안에 있는지 확인."""
+    now_minutes = now_kst.hour * 60 + now_kst.minute + now_kst.second / 60
+    reminder_minutes = reminder_time.hour * 60 + reminder_time.minute
+    diff = abs(now_minutes - reminder_minutes)
+    # 자정 경계 처리
+    diff = min(diff, 24 * 60 - diff)
+    return diff <= ROUTINE_REMINDER_WINDOW_MINUTES
+
+
+async def send_routine_reminders() -> None:
+    """5분마다 호출 — routine_reminder_time이 현재 ± 2.5분 사용자에게 발송."""
+    now_kst = datetime.now(KST)
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(NotificationSetting).where(NotificationSetting.push_enabled.is_(True))
+        )
+        settings = result.scalars().all()
+
+        for setting in settings:
+            if not is_within_reminder_window(setting.routine_reminder_time, now_kst):
+                continue
+
+            token_result = await db.execute(
+                select(DeviceToken).where(
+                    and_(
+                        DeviceToken.user_id == setting.user_id,
+                        DeviceToken.is_active.is_(True),
+                    )
+                )
+            )
+            tokens = token_result.scalars().all()
+            await send_notification(
+                db=db,
+                user_id=setting.user_id,
+                tokens=list(tokens),
+                notification_type="routine_reminder",
+                deep_link_type="routine_reminder",
             )
