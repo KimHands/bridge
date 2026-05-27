@@ -84,3 +84,13 @@ scheduler.add_job(
     id="weekly_mission_aggregate",
     replace_existing=True,
 )
+
+from app.services.notification import send_diary_nudges  # noqa: E402
+
+# 시나리오 2: 일기 미작성 — 매일 21:00 KST = UTC 12:00
+scheduler.add_job(
+    send_diary_nudges,
+    CronTrigger(hour=12, minute=0, timezone="UTC"),
+    id="diary_nudge",
+    replace_existing=True,
+)

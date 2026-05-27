@@ -1,13 +1,16 @@
 # backend/app/services/notification.py
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, date as date_cls, datetime
 from typing import Literal
 
 import httpx
-from sqlalchemy import update
+from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.notification import DeviceToken, NotificationLog
+from app.core.database import AsyncSessionLocal
+from app.models.diary import DiaryEntry
+from app.models.notification import DeviceToken, NotificationLog, NotificationSetting
+from app.models.user import User
 
 NotificationType = Literal[
     "routine_reminder",
@@ -168,3 +171,41 @@ async def send_notification(
             )
 
     await db.commit()
+
+
+async def send_diary_nudges() -> None:
+    """매일 21:00 KST — 당일 일기 미작성자에게 알림."""
+    today = date_cls.today()
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(User.id)
+            .join(NotificationSetting, NotificationSetting.user_id == User.id)
+            .where(NotificationSetting.push_enabled.is_(True))
+        )
+        candidate_user_ids = result.scalars().all()
+
+        for user_id in candidate_user_ids:
+            diary_check = await db.execute(
+                select(DiaryEntry.id)
+                .where(
+                    and_(DiaryEntry.user_id == user_id, DiaryEntry.recorded_date == today)
+                )
+                .limit(1)
+            )
+            if diary_check.scalar_one_or_none() is not None:
+                continue  # 이미 작성됨 → skip
+
+            token_result = await db.execute(
+                select(DeviceToken).where(
+                    and_(DeviceToken.user_id == user_id, DeviceToken.is_active.is_(True))
+                )
+            )
+            tokens = token_result.scalars().all()
+            await send_notification(
+                db=db,
+                user_id=user_id,
+                tokens=list(tokens),
+                notification_type="diary_nudge",
+                deep_link_type="diary_nudge",
+            )
