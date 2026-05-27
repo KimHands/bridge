@@ -33,7 +33,6 @@ export default function MyPageScreen() {
   const { user, logout } = useAuth();
   const initial = (user?.nickname?.[0] ?? 'B').toUpperCase();
 
-  const [notifOn, setNotifOn] = useState(true);
   const [darkOn, setDarkOn] = useState(false);
 
   const { data: weeklyMission } = useWeeklyMission();
@@ -99,7 +98,7 @@ export default function MyPageScreen() {
           { icon: <Notepad {...ICON_PROPS} />, label: '자가평가 다시 하기', onPress: () => navigation.navigate('Assessment') },
         ]}/>
         <Section title="설정" items={[
-          { icon: <Bell {...ICON_PROPS} />, label: '알림 설정', toggle: true, toggleOn: notifOn, onToggle: () => setNotifOn(v => !v) },
+          { icon: <Bell {...ICON_PROPS} />, label: '알림 설정', onPress: () => navigation.navigate('NotificationSettings') },
           { icon: <Moon {...ICON_PROPS} />, label: '다크 모드', toggle: true, toggleOn: darkOn, onToggle: () => setDarkOn(v => !v) },
           { icon: <Lock {...ICON_PROPS} />, label: '잠금 설정', onPress: () => notImplemented('잠금 설정') },
           { icon: <Globe {...ICON_PROPS} />, label: '언어', value: '한국어', onPress: () => notImplemented('언어 설정') },
