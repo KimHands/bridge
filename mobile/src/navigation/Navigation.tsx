@@ -4,6 +4,8 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useNotificationDeepLink } from '@/hooks/useNotificationDeepLink';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useAuth } from '@/store/auth';
 import { palette } from '@/theme/tokens';
 
@@ -67,6 +69,12 @@ export type MainTabParamList = {
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+function NotificationBridge() {
+  const handleDeepLink = useNotificationDeepLink();
+  usePushNotifications(handleDeepLink);
+  return null;
+}
+
 function MainTabs() {
   return (
     <Tab.Navigator
@@ -103,6 +111,7 @@ export default function Navigation() {
 
   return (
     <NavigationContainer>
+      <NotificationBridge />
       <Stack.Navigator key={navKey} screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         {!user ? (
           <Stack.Group>
