@@ -1,5 +1,13 @@
 # backend/app/services/notification.py
+import logging
+from datetime import UTC, datetime
 from typing import Literal
+
+import httpx
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.notification import DeviceToken, NotificationLog
 
 NotificationType = Literal[
     "routine_reminder",
@@ -55,15 +63,6 @@ def get_message(notification_type: NotificationType) -> dict[str, str]:
     assert_domain_safe(msg["body"])
     return msg
 
-
-import logging
-from datetime import datetime, UTC
-
-import httpx
-from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models.notification import DeviceToken, NotificationLog
 
 logger = logging.getLogger(__name__)
 
@@ -129,7 +128,7 @@ async def send_notification(
         return
 
     msg = get_message(notification_type)
-    data_payload = {"type": deep_link_type, **(extra_data or {})}
+    data_payload = {**(extra_data or {}), "type": deep_link_type}
 
     messages = [
         {
@@ -147,6 +146,7 @@ async def send_notification(
 
     now_utc = datetime.now(UTC)
 
+    assert len(tokens) == len(tickets), f"token/ticket count mismatch: {len(tokens)} vs {len(tickets)}"
     for token, ticket in zip(tokens, tickets):
         ticket_status = ticket.get("status", "error")
         if ticket_status == "ok":
