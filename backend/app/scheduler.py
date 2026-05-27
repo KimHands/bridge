@@ -86,6 +86,7 @@ scheduler.add_job(
 )
 
 from app.services.notification import (  # noqa: E402
+    cleanup_stale_tokens_and_logs,
     send_assessment_reminders,
     send_diary_nudges,
     send_routine_reminders,
@@ -121,5 +122,13 @@ scheduler.add_job(
     send_assessment_reminders,
     CronTrigger(hour=1, minute=0, timezone="UTC"),
     id="assessment_reminder",
+    replace_existing=True,
+)
+
+# Hygiene: 매일 03:00 KST = UTC 18:00
+scheduler.add_job(
+    cleanup_stale_tokens_and_logs,
+    CronTrigger(hour=18, minute=0, timezone="UTC"),
+    id="notification_cleanup",
     replace_existing=True,
 )

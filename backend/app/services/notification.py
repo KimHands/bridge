@@ -5,7 +5,7 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 import httpx
-from sqlalchemy import and_, func, select, update
+from sqlalchemy import and_, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -354,3 +354,22 @@ async def send_assessment_reminders() -> None:
                 notification_type="assessment_reminder",
                 deep_link_type="assessment_reminder",
             )
+
+
+async def cleanup_stale_tokens_and_logs() -> None:
+    """매일 03:00 KST — 90일 미사용 device_tokens 비활성 + 90일 지난 notification_logs 삭제."""
+    cutoff = datetime.now(UTC) - timedelta(days=90)
+
+    async with AsyncSessionLocal() as db:
+        await db.execute(
+            update(DeviceToken)
+            .where(
+                and_(
+                    DeviceToken.last_used_at < cutoff,
+                    DeviceToken.is_active.is_(True),
+                )
+            )
+            .values(is_active=False)
+        )
+        await db.execute(delete(NotificationLog).where(NotificationLog.sent_at < cutoff))
+        await db.commit()
