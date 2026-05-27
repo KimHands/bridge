@@ -33,6 +33,7 @@ import DiaryDetailScreen   from '@/screens/diary/DiaryDetailScreen';
 import RoutineDetailScreen from '@/screens/routine/RoutineDetailScreen';
 import RoutineAddScreen    from '@/screens/routine/RoutineAddScreen';
 import ProfileEditScreen   from '@/screens/my/ProfileEditScreen';
+import NotificationSettingsScreen from '@/screens/my/NotificationSettingsScreen';
 import LegalScreen         from '@/screens/legal/LegalScreen';
 import type { LegalKind }  from '@/screens/legal/LegalScreen';
 
@@ -55,6 +56,7 @@ export type RootStackParamList = {
   RoutineDetail: { routineId: string };
   RoutineAdd: undefined;
   ProfileEdit: undefined;
+  NotificationSettings: undefined;
   Legal: { kind: LegalKind };
 };
 
@@ -137,8 +139,9 @@ export default function Navigation() {
             <Stack.Screen name="DiaryDetail"   component={DiaryDetailScreen}/>
             <Stack.Screen name="RoutineDetail" component={RoutineDetailScreen}/>
             <Stack.Screen name="RoutineAdd"    component={RoutineAddScreen}/>
-            <Stack.Screen name="ProfileEdit"   component={ProfileEditScreen}/>
-            <Stack.Screen name="Legal"         component={LegalScreen}/>
+            <Stack.Screen name="ProfileEdit"          component={ProfileEditScreen}/>
+            <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen}/>
+            <Stack.Screen name="Legal"                component={LegalScreen}/>
             {/* re-running assessment from MyPage */}
             <Stack.Screen name="Assessment"      component={AssessmentScreen}/>
             <Stack.Screen name="InitialRoutine"  component={InitialRoutineScreen}/>
