@@ -54,3 +54,117 @@ def get_message(notification_type: NotificationType) -> dict[str, str]:
     assert_domain_safe(msg["title"])
     assert_domain_safe(msg["body"])
     return msg
+
+
+import logging
+from datetime import datetime, UTC
+
+import httpx
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.notification import DeviceToken, NotificationLog
+
+logger = logging.getLogger(__name__)
+
+EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
+EXPO_BATCH_SIZE = 100
+
+
+async def _send_to_expo(messages: list[dict]) -> list[dict]:
+    """Expo Push API에 chunk POST. 응답 ticket 리스트 반환."""
+    if not messages:
+        return []
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        tickets: list[dict] = []
+        for i in range(0, len(messages), EXPO_BATCH_SIZE):
+            chunk = messages[i : i + EXPO_BATCH_SIZE]
+            try:
+                resp = await client.post(
+                    EXPO_PUSH_URL,
+                    json=chunk,
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                )
+                resp.raise_for_status()
+                tickets.extend(resp.json().get("data", []))
+            except httpx.HTTPError as e:
+                logger.error(f"Expo Push API error: {e}")
+                tickets.extend([{"status": "error", "message": str(e)}] * len(chunk))
+        return tickets
+
+
+async def _record_log(
+    db: AsyncSession,
+    user_id,
+    notification_type: NotificationType,
+    title: str,
+    body: str,
+    data_payload: dict,
+    status: str,
+    error_message: str | None = None,
+) -> None:
+    log = NotificationLog(
+        user_id=user_id,
+        notification_type=notification_type,
+        title=title,
+        body=body,
+        data_payload=data_payload,
+        status=status,
+        error_message=error_message,
+    )
+    db.add(log)
+
+
+async def send_notification(
+    db: AsyncSession,
+    user_id,
+    tokens: list[DeviceToken],
+    notification_type: NotificationType,
+    deep_link_type: str,
+    extra_data: dict | None = None,
+) -> None:
+    """단일 사용자의 활성 토큰들에 알림 발송 + 로그 기록."""
+    if not tokens:
+        return
+
+    msg = get_message(notification_type)
+    data_payload = {"type": deep_link_type, **(extra_data or {})}
+
+    messages = [
+        {
+            "to": t.expo_token,
+            "title": msg["title"],
+            "body": msg["body"],
+            "data": data_payload,
+            "sound": "default",
+            "priority": "high",
+        }
+        for t in tokens
+    ]
+
+    tickets = await _send_to_expo(messages)
+
+    now_utc = datetime.now(UTC)
+
+    for token, ticket in zip(tokens, tickets):
+        ticket_status = ticket.get("status", "error")
+        if ticket_status == "ok":
+            await _record_log(db, user_id, notification_type, msg["title"], msg["body"], data_payload, "sent")
+            await db.execute(
+                update(DeviceToken)
+                .where(DeviceToken.id == token.id)
+                .values(last_used_at=now_utc)
+            )
+        else:
+            error_code = ticket.get("details", {}).get("error", "")
+            if error_code == "DeviceNotRegistered":
+                await db.execute(
+                    update(DeviceToken).where(DeviceToken.id == token.id).values(is_active=False)
+                )
+            await _record_log(
+                db, user_id, notification_type, msg["title"], msg["body"], data_payload,
+                "failed", error_message=ticket.get("message", error_code),
+            )
+
+    await db.commit()
