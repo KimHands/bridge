@@ -5,11 +5,13 @@ from typing import Literal
 from zoneinfo import ZoneInfo
 
 import httpx
-from sqlalchemy import and_, select, update
+from sqlalchemy import and_, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
+from app.models.assessment import Assessment
 from app.models.diary import DiaryEntry
+from app.models.mission import MissionPoint
 from app.models.notification import DeviceToken, NotificationLog, NotificationSetting
 from app.models.user import User
 
@@ -74,6 +76,8 @@ EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send"
 EXPO_BATCH_SIZE = 100
 KST = ZoneInfo("Asia/Seoul")
 ROUTINE_REMINDER_WINDOW_MINUTES = 2.5
+ASSESSMENT_REMINDER_DAYS = 56  # 8주
+ASSESSMENT_DEDUPE_DAYS = 14    # 직전 14일 내 알림 발송 시 skip
 
 
 async def _send_to_expo(messages: list[dict]) -> list[dict]:
@@ -253,4 +257,100 @@ async def send_routine_reminders() -> None:
                 tokens=list(tokens),
                 notification_type="routine_reminder",
                 deep_link_type="routine_reminder",
+            )
+
+
+async def send_weekly_mission_notifications() -> None:
+    """월요일 09:00 KST — 직전 주 mission_points가 있는 사용자에게 발송."""
+    today = date_cls.today()
+    last_week_start = today - timedelta(days=today.weekday() + 7)
+
+    async with AsyncSessionLocal() as db:
+        result = await db.execute(
+            select(MissionPoint.user_id)
+            .join(NotificationSetting, NotificationSetting.user_id == MissionPoint.user_id)
+            .where(
+                and_(
+                    MissionPoint.week_start == last_week_start,
+                    NotificationSetting.push_enabled.is_(True),
+                )
+            )
+        )
+        user_ids = result.scalars().all()
+
+        for user_id in user_ids:
+            token_result = await db.execute(
+                select(DeviceToken).where(
+                    and_(DeviceToken.user_id == user_id, DeviceToken.is_active.is_(True))
+                )
+            )
+            tokens = token_result.scalars().all()
+            await send_notification(
+                db=db,
+                user_id=user_id,
+                tokens=list(tokens),
+                notification_type="weekly_mission",
+                deep_link_type="weekly_mission",
+            )
+
+
+def is_assessment_due(last_assessment_date: date_cls, today: date_cls) -> bool:
+    """마지막 평가 후 8주(56일) 경과 여부."""
+    return (today - last_assessment_date).days >= ASSESSMENT_REMINDER_DAYS
+
+
+async def send_assessment_reminders() -> None:
+    """매일 10:00 KST — 마지막 평가 후 8주 경과 + 직전 14일 알림 미발송자."""
+    today = date_cls.today()
+    dedupe_cutoff = datetime.now(UTC) - timedelta(days=ASSESSMENT_DEDUPE_DAYS)
+
+    async with AsyncSessionLocal() as db:
+        subq = (
+            select(
+                Assessment.user_id,
+                func.max(Assessment.created_at).label("last_at"),
+            )
+            .group_by(Assessment.user_id)
+            .subquery()
+        )
+
+        result = await db.execute(
+            select(subq.c.user_id, subq.c.last_at)
+            .join(NotificationSetting, NotificationSetting.user_id == subq.c.user_id)
+            .where(NotificationSetting.push_enabled.is_(True))
+        )
+        rows = result.all()
+
+        for user_id, last_at in rows:
+            if not is_assessment_due(last_at.date(), today):
+                continue
+
+            # 직전 14일 dedupe
+            dedupe_check = await db.execute(
+                select(NotificationLog.id)
+                .where(
+                    and_(
+                        NotificationLog.user_id == user_id,
+                        NotificationLog.notification_type == "assessment_reminder",
+                        NotificationLog.sent_at >= dedupe_cutoff,
+                        NotificationLog.status == "sent",
+                    )
+                )
+                .limit(1)
+            )
+            if dedupe_check.scalar_one_or_none() is not None:
+                continue
+
+            token_result = await db.execute(
+                select(DeviceToken).where(
+                    and_(DeviceToken.user_id == user_id, DeviceToken.is_active.is_(True))
+                )
+            )
+            tokens = token_result.scalars().all()
+            await send_notification(
+                db=db,
+                user_id=user_id,
+                tokens=list(tokens),
+                notification_type="assessment_reminder",
+                deep_link_type="assessment_reminder",
             )

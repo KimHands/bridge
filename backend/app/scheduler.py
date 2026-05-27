@@ -85,7 +85,12 @@ scheduler.add_job(
     replace_existing=True,
 )
 
-from app.services.notification import send_diary_nudges, send_routine_reminders  # noqa: E402
+from app.services.notification import (  # noqa: E402
+    send_assessment_reminders,
+    send_diary_nudges,
+    send_routine_reminders,
+    send_weekly_mission_notifications,
+)
 
 # 시나리오 2: 일기 미작성 — 매일 21:00 KST = UTC 12:00
 scheduler.add_job(
@@ -100,5 +105,21 @@ scheduler.add_job(
     send_routine_reminders,
     CronTrigger(minute="*/5", timezone="UTC"),
     id="routine_reminder",
+    replace_existing=True,
+)
+
+# 시나리오 4: 주간 미션 결과 — 월 09:00 KST = UTC 일 00:00
+scheduler.add_job(
+    send_weekly_mission_notifications,
+    CronTrigger(day_of_week="sun", hour=0, minute=0, timezone="UTC"),
+    id="weekly_mission_notification",
+    replace_existing=True,
+)
+
+# 시나리오 5: 자가평가 리마인더 — 매일 10:00 KST = UTC 01:00
+scheduler.add_job(
+    send_assessment_reminders,
+    CronTrigger(hour=1, minute=0, timezone="UTC"),
+    id="assessment_reminder",
     replace_existing=True,
 )
