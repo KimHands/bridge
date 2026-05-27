@@ -22,6 +22,11 @@ import type {
 } from '@/types/routine';
 import type { WeeklyReportData, MonthlyReportData, MoodTrendData } from '@/types/report';
 import type { WeeklyMissionData, TotalMissionData } from '@/types/mission';
+import type {
+  NotificationSettings,
+  NotificationSettingsUpdateRequest,
+  PushTokenRegisterRequest,
+} from '@/types/notification';
 
 // 운영 빌드는 EXPO_PUBLIC_API_URL 환경변수(https://...)로 주입.
 // 로컬 개발 시 fallback은 http://localhost:8000/v1.
@@ -209,6 +214,34 @@ export const me = {
   update: (p: { nickname?: string }): Promise<UserMe> =>
     api.patch<UserMe>('/auth/me', p).then(r => r.data),
   // /me/stats 엔드포인트 없음 — 통계는 missions.weekly + diary.list 조합으로 대체
+};
+
+export const notifications = {
+  // POST /users/me/push-token
+  registerToken: async (body: PushTokenRegisterRequest) => {
+    const { data } = await api.post<{ registered: boolean }>('/users/me/push-token', body);
+    return data;
+  },
+
+  // DELETE /users/me/push-token
+  deactivateToken: async (expo_token: string) => {
+    const { data } = await api.delete<{ deactivated: boolean }>('/users/me/push-token', {
+      data: { expo_token },
+    });
+    return data;
+  },
+
+  // GET /users/me/notification-settings
+  getSettings: async () => {
+    const { data } = await api.get<NotificationSettings>('/users/me/notification-settings');
+    return data;
+  },
+
+  // PATCH /users/me/notification-settings
+  updateSettings: async (body: NotificationSettingsUpdateRequest) => {
+    const { data } = await api.patch<NotificationSettings>('/users/me/notification-settings', body);
+    return data;
+  },
 };
 
 // ── Error helpers ────────────────────────────────────────────
