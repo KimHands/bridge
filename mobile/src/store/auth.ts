@@ -2,10 +2,12 @@
 import { create } from 'zustand';
 import {
   auth,
+  notifications,
   getToken, setToken, clearToken,
   getRefreshToken, setRefreshToken, clearRefreshToken,
   getStoredUser, setStoredUser, clearStoredUser,
 } from '@/lib/api';
+import { getExpoPushToken } from '@/lib/notifications';
 
 export type User = {
   user_id: string;
@@ -89,6 +91,18 @@ export const useAuth = create<AuthState>((set) => ({
   },
 
   logout: async () => {
+    // Step 1: Deactivate push token (still has JWT)
+    try {
+      const token = await getExpoPushToken();
+      if (token) {
+        await notifications.deactivateToken(token);
+      }
+    } catch (e) {
+      console.warn('[auth] failed to deactivate push token:', e);
+      // logout 자체는 계속 진행
+    }
+
+    // Step 2: Clear local tokens
     const refreshToken = await getRefreshToken();
     try {
       if (refreshToken) await auth.logout(refreshToken);
