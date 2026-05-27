@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import any_, select
+from sqlalchemy import and_, any_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -10,7 +10,9 @@ from app.models.assessment import Assessment
 from app.models.diary import DiaryEntry
 from app.models.keyword import DiaryEmotionKeyword, EmotionKeyword
 from app.models.mission import TriggerLog
+from app.models.notification import DeviceToken, NotificationSetting
 from app.models.routine import Routine, UserRoutine
+from app.services.notification import send_notification
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +126,7 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
 
     # ⑥ 키워드별 쿨다운 확인 + 루틴 배정
     any_assigned = False
+    assigned_routine_ids: list = []
     for keyword in triggered_keywords:
         # 쿨다운 확인
         cd_result = await db.execute(
@@ -169,6 +172,29 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
 
         active_ids.add(routine.id)
         any_assigned = True
+        assigned_routine_ids.append(routine.id)
 
     if any_assigned:
         await db.commit()
+
+        # 시나리오 3: 트리거 발동 시 즉시 푸시 알림
+        setting_result = await db.execute(
+            select(NotificationSetting).where(NotificationSetting.user_id == user_id)
+        )
+        setting = setting_result.scalar_one_or_none()
+        if setting and setting.push_enabled:
+            token_result = await db.execute(
+                select(DeviceToken).where(
+                    and_(DeviceToken.user_id == user_id, DeviceToken.is_active.is_(True))
+                )
+            )
+            tokens = token_result.scalars().all()
+            for assigned_routine_id in assigned_routine_ids:
+                await send_notification(
+                    db=db,
+                    user_id=user_id,
+                    tokens=list(tokens),
+                    notification_type="trigger",
+                    deep_link_type="trigger",
+                    extra_data={"routine_id": str(assigned_routine_id)},
+                )
