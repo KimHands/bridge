@@ -17,5 +17,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
     app_debug: bool = True
 
+    # CORS 허용 origin (콤마 구분). 운영에선 .env로 명시 origin 지정 권장.
+    cors_origins: str = "*"
+
 
 settings = Settings()

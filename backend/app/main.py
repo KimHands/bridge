@@ -2,7 +2,10 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+
+from app.core.config import settings
 
 from app.api.v1 import assessments as assessments_router
 from app.api.v1 import auth as auth_router
@@ -32,6 +35,17 @@ app = FastAPI(
     title="Bridge API",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+# CORS — 모바일/웹 클라이언트 프리플라이트 허용.
+# 인증은 Authorization 헤더 기반이라 credentials(쿠키) 불필요 → allow_credentials=False.
+_cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
