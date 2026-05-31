@@ -18,6 +18,7 @@ import { useStartDiary } from '@/hooks/useStartDiary';
 import { RoutineIcon } from '@/lib/routineIcon';
 import { MoodIcon } from '@/lib/moodIcon';
 import type { MoodId } from '@/theme/tokens';
+import type { DiaryListItem } from '@/types/diary';
 
 type Nav = CompositeNavigationProp<
   BottomTabNavigationProp<MainTabParamList, 'Home'>,
@@ -153,7 +154,7 @@ export default function HomeScreen() {
             <Text style={s.emptyHint}>아직 작성한 일기가 없어요.{'\n'}오늘의 마음을 기록해보세요.</Text>
           </Card>
         ) : (
-          recentDiaries.map((d: any, i: number) => (
+          recentDiaries.map((d, i) => (
             <DiaryRow
               key={d.diary_id ?? i}
               diary={d}
@@ -169,11 +170,11 @@ export default function HomeScreen() {
   );
 }
 
-function DiaryRow({ diary, onPress }: { diary: any; onPress?: () => void }) {
-  const date = diary.created_at ? new Date(diary.created_at) : null;
-  const day = date ? String(date.getDate()).padStart(2, '0') : '—';
-  const month = date ? `${date.getMonth() + 1}` : '';
-  const moodScore = (diary.mood_score ?? 3) as 1 | 2 | 3 | 4 | 5;
+function DiaryRow({ diary, onPress }: { diary: DiaryListItem; onPress?: () => void }) {
+  const date = new Date(diary.created_at);
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = `${date.getMonth() + 1}`;
+  const moodScore = diary.mood_score;
   const moodKey = (['verybad', 'bad', 'normal', 'good', 'verygood'] as const)[moodScore - 1] ?? 'normal';
   const moodInfo = moodMeta[moodKey];
   return (

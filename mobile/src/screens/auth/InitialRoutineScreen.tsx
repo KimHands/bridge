@@ -15,7 +15,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'InitialRoutine'>;
 
 export default function InitialRoutineScreen({ navigation }: Props) {
   const { data, isLoading } = useRoutineList();
-  const routines: any[] = (data as any)?.routines ?? [];
+  const routines = data?.routines ?? [];
 
   // 두 가지 진입 경로를 모두 처리:
   // (1) assessment 그룹: requires_assessment=true → false 로 플립하면
@@ -55,7 +55,7 @@ export default function InitialRoutineScreen({ navigation }: Props) {
           </View>
         ) : (
           <View style={{ marginTop: 20, gap: 12 }}>
-            {routines.map((r: any) => (
+            {routines.map((r) => (
               <Card key={r.user_routine_id} style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                 <View style={s.iconBox}>
                   <RoutineIcon title={r.title} size={32} />

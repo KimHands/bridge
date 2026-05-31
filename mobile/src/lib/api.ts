@@ -65,6 +65,31 @@ export const api: AxiosInstance = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
+// refresh 전용 클라이언트 — 인터셉터 없음(401 시 재귀 refresh 방지).
+const refreshClient = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: 12000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// 세션 만료 시 토큰/유저 정리 후 앱에 알림.
+async function forceLogout() {
+  await clearToken();
+  await clearRefreshToken();
+  await clearStoredUser();
+  const handler = (globalThis as { __bridgeOnAuthExpired?: () => void }).__bridgeOnAuthExpired;
+  if (typeof handler === 'function') handler();
+}
+
+// 동시 401 발생 시 refresh를 한 번만 수행하고 나머지 요청은 큐에서 대기.
+let isRefreshing = false;
+let pendingQueue: Array<(token: string | null) => void> = [];
+
+function flushQueue(token: string | null) {
+  pendingQueue.forEach((cb) => cb(token));
+  pendingQueue = [];
+}
+
 // Inject Bearer token
 api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   const token = await getToken();
@@ -72,7 +97,7 @@ api.interceptors.request.use(async (config: InternalAxiosRequestConfig) => {
   return config;
 });
 
-// Unwrap { success, data } response + handle 401
+// Unwrap { success, data } response + 401 시 토큰 자동 갱신 후 원 요청 재시도
 api.interceptors.response.use(
   (r) => {
     if (r.data && typeof r.data === 'object' && 'success' in r.data) {
@@ -81,14 +106,48 @@ api.interceptors.response.use(
     return r;
   },
   async (err: AxiosError) => {
-    if (err.response?.status === 401) {
-      await clearToken();
-      await clearRefreshToken();
-      await clearStoredUser();
-      const handler = (globalThis as { __bridgeOnAuthExpired?: () => void }).__bridgeOnAuthExpired;
-      if (typeof handler === 'function') handler();
+    const original = err.config as (InternalAxiosRequestConfig & { _retry?: boolean }) | undefined;
+
+    if (err.response?.status !== 401 || !original || original._retry) {
+      return Promise.reject(err);
     }
-    return Promise.reject(err);
+    original._retry = true;
+
+    const refreshToken = await getRefreshToken();
+    if (!refreshToken) {
+      await forceLogout();
+      return Promise.reject(err);
+    }
+
+    // 이미 다른 요청이 refresh 중이면 완료될 때까지 대기 후 재시도.
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        pendingQueue.push((newToken) => {
+          if (!newToken) return reject(err);
+          if (original.headers) original.headers.Authorization = `Bearer ${newToken}`;
+          resolve(api(original));
+        });
+      });
+    }
+
+    isRefreshing = true;
+    try {
+      const res = await refreshClient.post('/auth/refresh', { refresh_token: refreshToken });
+      const body = res.data && typeof res.data === 'object' && 'success' in res.data ? res.data.data : res.data;
+      const newAccess: string = body.access_token;
+      const newRefresh: string = body.refresh_token;
+      await setToken(newAccess);
+      await setRefreshToken(newRefresh);
+      flushQueue(newAccess);
+      if (original.headers) original.headers.Authorization = `Bearer ${newAccess}`;
+      return api(original);
+    } catch (refreshErr) {
+      flushQueue(null);
+      await forceLogout();
+      return Promise.reject(refreshErr);
+    } finally {
+      isRefreshing = false;
+    }
   },
 );
 

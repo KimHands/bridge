@@ -11,7 +11,29 @@ import {
   requestPermission,
 } from '@/lib/notifications';
 import { notifications } from '@/lib/api';
-import type { NotificationPayload } from '@/types/notification';
+import type { NotificationPayload, NotificationType } from '@/types/notification';
+
+const VALID_NOTIFICATION_TYPES: NotificationType[] = [
+  'routine_reminder',
+  'diary_nudge',
+  'trigger',
+  'weekly_mission',
+  'assessment_reminder',
+];
+
+// 푸시 payload는 외부에서 들어오므로 타입 단언 대신 런타임 검증.
+function parseNotificationPayload(data: unknown): NotificationPayload | null {
+  if (!data || typeof data !== 'object') return null;
+  const type = (data as { type?: unknown }).type;
+  if (typeof type !== 'string' || !VALID_NOTIFICATION_TYPES.includes(type as NotificationType)) {
+    return null;
+  }
+  const routineId = (data as { routine_id?: unknown }).routine_id;
+  return {
+    type: type as NotificationType,
+    routine_id: typeof routineId === 'string' ? routineId : undefined,
+  };
+}
 
 export function usePushNotifications(
   onNotificationResponse?: (payload: NotificationPayload) => void
@@ -57,14 +79,14 @@ export function usePushNotifications(
     if (!onNotificationResponse) return;
 
     const responseSub = Notifications.addNotificationResponseReceivedListener(response => {
-      const payload = response.notification.request.content.data as unknown as NotificationPayload;
-      if (payload?.type) onNotificationResponse(payload);
+      const payload = parseNotificationPayload(response.notification.request.content.data);
+      if (payload) onNotificationResponse(payload);
     });
 
     Notifications.getLastNotificationResponseAsync().then(response => {
       if (!response) return;
-      const payload = response.notification.request.content.data as unknown as NotificationPayload;
-      if (payload?.type) onNotificationResponse(payload);
+      const payload = parseNotificationPayload(response.notification.request.content.data);
+      if (payload) onNotificationResponse(payload);
     });
 
     return () => responseSub.remove();

@@ -10,9 +10,7 @@ import { palette, fontFamily } from '@/theme/tokens';
 import { Card, Pill } from '@/components/atoms';
 import { useAuth } from '@/store/auth';
 import { useWeeklyMission } from '@/hooks/useMissionQueries';
-import { useQuery } from '@tanstack/react-query';
-import { diary } from '@/lib/api';
-import type { DiaryListResponse } from '@/types/diary';
+import { useDiaryList } from '@/hooks/useDiaryQueries';
 import {
   Target, Trophy, ChartBar, Notepad,
   Bell, Moon, Lock, Globe,
@@ -36,10 +34,7 @@ export default function MyPageScreen() {
   const [darkOn, setDarkOn] = useState(false);
 
   const { data: weeklyMission } = useWeeklyMission();
-  const { data: diaryList } = useQuery<DiaryListResponse, Error>({
-    queryKey: ['diary', 'list'],
-    queryFn: () => diary.list(),
-  });
+  const { data: diaryList } = useDiaryList();
 
   const totalScore = weeklyMission?.total_score ?? 0;
   const level = scoreToLevel(totalScore);
@@ -132,7 +127,18 @@ function StatCard({ label, value, suffix }: { label: string; value: number; suff
   );
 }
 
-function Section({ title, items }: { title: string; items: any[] }) {
+type SectionItem = {
+  icon: React.ReactNode;
+  label: string;
+  onPress?: () => void;
+  badge?: string;
+  value?: string;
+  toggle?: boolean;
+  toggleOn?: boolean;
+  onToggle?: () => void;
+};
+
+function Section({ title, items }: { title: string; items: SectionItem[] }) {
   return (
     <View>
       <Text style={s.sectionTitle}>{title}</Text>

@@ -116,6 +116,12 @@ export default function AssessmentScreen({ navigation, route }: Props) {
     return () => { cancelled = true; };
   }, [isViewMode, navigation]);
 
+  // step 자동 진행 타이머 — early return보다 위에서 선언해 Hook 호출 순서를 고정한다.
+  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
+  }, []);
+
   const total = answers.reduce<number>((a, b) => a + (b ?? 0), 0);
   const note = isViewMode && viewTier !== null ? getNoteByTier(viewTier) : getNote(total);
 
@@ -126,11 +132,6 @@ export default function AssessmentScreen({ navigation, route }: Props) {
       </View>
     );
   }
-
-  const advanceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => {
-    if (advanceTimerRef.current) clearTimeout(advanceTimerRef.current);
-  }, []);
 
   const selectAnswer = (score: number) => {
     const next = [...answers];
