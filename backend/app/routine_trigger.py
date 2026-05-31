@@ -64,6 +64,48 @@ def _evaluate_triggers(
     return sorted(triggered, key=lambda k: trigger_scores.get(k, 0), reverse=True)[:2]
 
 
+async def _is_in_cooldown(
+    db: AsyncSession, user_id: uuid.UUID, keyword: str, now: datetime
+) -> bool:
+    """해당 키워드가 마지막 트리거 이후 쿨다운(3일) 중이면 True."""
+    result = await db.execute(
+        select(TriggerLog)
+        .where(TriggerLog.user_id == user_id, TriggerLog.triggered_keyword == keyword)
+        .order_by(TriggerLog.created_at.desc())
+        .limit(1)
+    )
+    last_log = result.scalar_one_or_none()
+    return bool(last_log and last_log.cooldown_until > now)
+
+
+def _assign_routine(
+    db: AsyncSession,
+    user_id: uuid.UUID,
+    routine: Routine,
+    keywords: list[str],
+    now: datetime,
+    active_ids: set,
+    assigned_routine_ids: list,
+) -> None:
+    """루틴 1개를 배정하고, 커버하는 모든 키워드에 쿨다운(TriggerLog)을 기록."""
+    db.add(UserRoutine(
+        user_id=user_id,
+        routine_id=routine.id,
+        source="trigger",
+        is_active=True,
+        assigned_at=now,
+    ))
+    for keyword in keywords:
+        db.add(TriggerLog(
+            user_id=user_id,
+            triggered_keyword=keyword,
+            routine_id=routine.id,
+            cooldown_until=now + timedelta(days=COOLDOWN_DAYS),
+        ))
+    active_ids.add(routine.id)
+    assigned_routine_ids.append(routine.id)
+
+
 async def run_trigger(user_id: uuid.UUID) -> None:
     """
     BackgroundTasks.add_task(run_trigger, user_id) 로 호출.
@@ -124,55 +166,51 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     )
     active_ids = {row[0] for row in active_result.all()}
 
-    # ⑥ 키워드별 쿨다운 확인 + 루틴 배정
+    # ⑥ 쿨다운을 통과한 키워드만 선별
+    fresh_keywords = [
+        k for k in triggered_keywords if not await _is_in_cooldown(db, user_id, k, now)
+    ]
+
     any_assigned = False
     assigned_routine_ids: list = []
-    for keyword in triggered_keywords:
-        # 쿨다운 확인
-        cd_result = await db.execute(
-            select(TriggerLog)
-            .where(TriggerLog.user_id == user_id, TriggerLog.triggered_keyword == keyword)
-            .order_by(TriggerLog.created_at.desc())
-            .limit(1)
-        )
-        last_log = cd_result.scalar_one_or_none()
-        if last_log and last_log.cooldown_until > now:
-            continue
 
-        # 루틴 조회 (tier 범위 + 키워드 매칭, 중복 제외)
-        routine_result = await db.execute(
+    # ⑥-a 충돌 처리(명세 C-3): 상위 2개 키워드가 동시 발동하면
+    #      두 키워드를 모두 커버하는 복합 루틴을 우선 추천.
+    composite_assigned = False
+    if len(fresh_keywords) >= 2:
+        top_two = fresh_keywords[:2]
+        composite_result = await db.execute(
             select(Routine)
             .where(
                 Routine.phq_tier_min <= phq_tier,
                 Routine.phq_tier_max >= phq_tier,
-                keyword == any_(Routine.target_keywords),
+                Routine.target_keywords.contains(top_two),
             )
             .limit(1)
         )
-        routine = routine_result.scalar_one_or_none()
-        if not routine or routine.id in active_ids:
-            continue
+        composite = composite_result.scalar_one_or_none()
+        if composite and composite.id not in active_ids:
+            _assign_routine(db, user_id, composite, top_two, now, active_ids, assigned_routine_ids)
+            any_assigned = True
+            composite_assigned = True
 
-        # UserRoutine 삽입
-        db.add(UserRoutine(
-            user_id=user_id,
-            routine_id=routine.id,
-            source="trigger",
-            is_active=True,
-            assigned_at=now,
-        ))
-
-        # TriggerLog 기록
-        db.add(TriggerLog(
-            user_id=user_id,
-            triggered_keyword=keyword,
-            routine_id=routine.id,
-            cooldown_until=now + timedelta(days=COOLDOWN_DAYS),
-        ))
-
-        active_ids.add(routine.id)
-        any_assigned = True
-        assigned_routine_ids.append(routine.id)
+    # ⑥-b 복합 루틴이 없으면(또는 단일 키워드) 키워드별 단일 루틴 개별 배정.
+    if not composite_assigned:
+        for keyword in fresh_keywords:
+            routine_result = await db.execute(
+                select(Routine)
+                .where(
+                    Routine.phq_tier_min <= phq_tier,
+                    Routine.phq_tier_max >= phq_tier,
+                    keyword == any_(Routine.target_keywords),
+                )
+                .limit(1)
+            )
+            routine = routine_result.scalar_one_or_none()
+            if not routine or routine.id in active_ids:
+                continue
+            _assign_routine(db, user_id, routine, [keyword], now, active_ids, assigned_routine_ids)
+            any_assigned = True
 
     if any_assigned:
         await db.commit()
