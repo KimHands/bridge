@@ -20,6 +20,11 @@ async def set_refresh_session(user_id: str, refresh_token: str) -> None:
     await r.setex(f"session:{user_id}", int(ttl.total_seconds()), refresh_token)
 
 
+async def get_refresh_session(user_id: str) -> str | None:
+    r = await get_redis()
+    return await r.get(f"session:{user_id}")
+
+
 async def delete_refresh_session(user_id: str) -> None:
     r = await get_redis()
     await r.delete(f"session:{user_id}")

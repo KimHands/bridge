@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,6 +10,7 @@ from app.core.database import get_db
 from app.core.redis import (
     blacklist_token,
     delete_refresh_session,
+    get_refresh_session,
     is_blacklisted,
     set_refresh_session,
 )
@@ -20,7 +22,7 @@ from app.core.security import (
     hash_password,
     verify_password,
 )
-from app.dependencies.auth import get_current_user
+from app.dependencies.auth import bearer_scheme, get_current_user
 from app.models.assessment import Assessment
 from app.models.user import User
 from app.schemas.auth import (
@@ -56,7 +58,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
-    access_token = create_access_token(str(user.id))
+    access_token, _ = create_access_token(str(user.id))
     refresh_token, _ = create_refresh_token(str(user.id))
     await set_refresh_session(str(user.id), refresh_token)
 
@@ -94,7 +96,7 @@ async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Assessment).where(Assessment.user_id == user.id).limit(1))
     requires_assessment = result.scalars().first() is None
 
-    access_token = create_access_token(str(user.id))
+    access_token, _ = create_access_token(str(user.id))
     refresh_token, _ = create_refresh_token(str(user.id))
     await set_refresh_session(str(user.id), refresh_token)
 
@@ -135,10 +137,19 @@ async def refresh(body: RefreshRequest):
         )
 
     user_id = payload["sub"]
+
+    # Redis 저장 세션과 대조 — 회전된(폐기된) Refresh Token 재사용 차단
+    stored_token = await get_refresh_session(user_id)
+    if stored_token != body.refresh_token:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "INVALID_REFRESH_TOKEN", "message": "유효하지 않은 Refresh Token입니다"},
+        )
+
     exp = payload["exp"]
     remaining_ttl = max(0, exp - int(datetime.now(timezone.utc).timestamp()))
 
-    new_access_token = create_access_token(user_id)
+    new_access_token, _ = create_access_token(user_id)
     new_refresh_token, _ = create_refresh_token(user_id)
 
     if old_jti:
@@ -180,12 +191,25 @@ async def get_me(
 async def logout(
     body: LogoutRequest,
     current_user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
 ):
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+
+    # 현재 Access Token 무효화 — jti 블랙리스트 (만료까지 남은 TTL 동안)
+    try:
+        access_payload = decode_token(credentials.credentials)
+        access_jti = access_payload.get("jti")
+        access_ttl = max(0, access_payload.get("exp", 0) - now_ts)
+        if access_jti:
+            await blacklist_token(access_jti, access_ttl)
+    except JWTError:
+        pass
+
+    # Refresh Token 무효화 — jti 블랙리스트
     try:
         payload = decode_token(body.refresh_token)
         jti = payload.get("jti")
-        exp = payload.get("exp", 0)
-        remaining_ttl = max(0, exp - int(datetime.now(timezone.utc).timestamp()))
+        remaining_ttl = max(0, payload.get("exp", 0) - now_ts)
         if jti:
             await blacklist_token(jti, remaining_ttl)
     except JWTError:

@@ -21,10 +21,12 @@ def verify_password(plain: str, hashed: str) -> bool:
     return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: str) -> tuple[str, str]:
+    jti = str(uuid.uuid4())
     expire = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
-    payload = {"sub": user_id, "exp": expire, "type": "access"}
-    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    payload = {"sub": user_id, "exp": expire, "jti": jti, "type": "access"}
+    token = jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+    return token, jti
 
 
 def create_refresh_token(user_id: str) -> tuple[str, str]:
