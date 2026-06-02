@@ -7,6 +7,27 @@ import re
 
 from app.services.notification import assert_domain_safe
 
+# 위기 감지 시 LLM 대신 반환하는 정적 안내. 전문기관 연결만 한다(상담·진단 없음).
+CRISIS_REPLY = (
+    "지금 많이 힘든 마음이 느껴져요. 혼자 견디지 않아도 괜찮아요.\n"
+    "아래 전문기관에서 24시간 도움을 받을 수 있어요.\n"
+    "· 자살예방상담 1393\n"
+    "· 정신건강위기상담 1577-0199\n"
+    "지금 바로 이야기 나눠보는 건 어떨까요?"
+)
+
+# 게이트웨이 장애 또는 출력 검증 실패 시 대체 메시지.
+SAFE_FALLBACK_REPLY = "지금 잠시 응답이 어려워요. 잠시 후 다시 시도해주세요."
+
+
+def crisis_info_payload() -> dict:
+    """위기 응답에 동봉할 구조화 정보(전화번호 목록 + 병원찾기 CTA 플래그)."""
+    return {
+        "lines": ["자살예방상담 1393", "정신건강위기상담 1577-0199"],
+        "show_hospital_cta": True,
+    }
+
+
 # 자살·자해·극단적 선택 등 위기 신호. 공백 제거 후 부분일치로 검사한다.
 _CRISIS_TERMS = (
     "자살",

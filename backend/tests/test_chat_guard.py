@@ -1,4 +1,9 @@
 from app.services.chat_guard import detect_crisis, is_reply_safe
+from app.services.chat_guard import (
+    CRISIS_REPLY,
+    SAFE_FALLBACK_REPLY,
+    crisis_info_payload,
+)
 
 
 def test_detect_crisis_true_for_suicide_terms():
@@ -29,3 +34,18 @@ def test_is_reply_safe_handles_non_string():
 def test_is_reply_safe_blocks_and_allows():
     assert is_reply_safe("치료가 필요해요") is False  # 금지어 '치료'
     assert is_reply_safe("오늘 하루 어땠어요?") is True
+
+
+def test_crisis_reply_contains_hotlines():
+    assert "1393" in CRISIS_REPLY
+    assert "1577-0199" in CRISIS_REPLY
+
+
+def test_safe_fallback_reply_is_nonempty():
+    assert isinstance(SAFE_FALLBACK_REPLY, str) and len(SAFE_FALLBACK_REPLY) > 0
+
+
+def test_crisis_info_payload_shape():
+    info = crisis_info_payload()
+    assert info["show_hospital_cta"] is True
+    assert any("1393" in line for line in info["lines"])
