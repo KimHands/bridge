@@ -27,6 +27,21 @@ def test_detect_crisis_covers_euphemisms():
     assert detect_crisis("세상을 떠나고 싶다") is True
 
 
+def test_detect_crisis_covers_extended_euphemisms():
+    # B4: 완곡·간접 표현 확장
+    assert detect_crisis("이제 그만 살고 싶어") is True
+    assert detect_crisis("더 이상 버틸 수가 없어") is True
+    assert detect_crisis("그냥 다 포기하고 싶어") is True
+    assert detect_crisis("사는 게 너무 싫어... 살기 싫다") is True
+
+
+def test_detect_crisis_covers_english_case_insensitive():
+    # B4: 영어 + 대소문자/공백 변형 흡수
+    assert detect_crisis("I want to die") is True
+    assert detect_crisis("Suicide") is True
+    assert detect_crisis("i'm going to KILL MYSELF") is True
+
+
 def test_is_reply_safe_handles_non_string():
     assert is_reply_safe(None) is False  # type: ignore[arg-type]
 
@@ -34,6 +49,13 @@ def test_is_reply_safe_handles_non_string():
 def test_is_reply_safe_blocks_and_allows():
     assert is_reply_safe("치료가 필요해요") is False  # 금지어 '치료'
     assert is_reply_safe("오늘 하루 어땠어요?") is True
+
+
+def test_is_reply_safe_blocks_medical_action_terms():
+    # B3: 의료행위 암시어 + 위기어 차단 커버리지
+    assert is_reply_safe("전문 상담을 받아보세요") is False   # '상담'
+    assert is_reply_safe("처방받은 약을 드세요") is False      # '처방'
+    assert is_reply_safe("자해 충동이 들면") is False          # '자해'
 
 
 def test_crisis_reply_contains_hotlines():

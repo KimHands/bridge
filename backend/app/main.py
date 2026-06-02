@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
@@ -6,6 +7,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+
+def resolve_cors_origins(cors_origins: str, is_production: bool) -> list[str]:
+    """CORS origin 목록을 결정한다.
+
+    운영에서 와일드카드('*')는 안전하지 않으므로 무시하고 빈 목록(전체 차단)으로
+    fail-safe 처리한다. 운영자는 .env의 CORS_ORIGINS에 명시 origin을 지정해야 한다.
+    """
+    origins = [o.strip() for o in cors_origins.split(",") if o.strip()]
+    if is_production and "*" in origins:
+        logger.warning(
+            "CORS_ORIGINS='*' is unsafe in production — ignoring wildcard. "
+            "Set explicit origins in .env CORS_ORIGINS."
+        )
+        return [o for o in origins if o != "*"]
+    return origins
 
 from app.api.v1 import assessments as assessments_router
 from app.api.v1 import auth as auth_router
@@ -16,6 +35,7 @@ from app.api.v1 import missions as missions_router
 from app.api.v1 import notifications as notifications_router
 from app.api.v1 import reports as reports_router
 from app.api.v1 import routines as routines_router
+from app.api.v1 import users as users_router
 from app.core.database import AsyncSessionLocal
 from app.scheduler import scheduler
 from app.seeds.emotion_keywords import seed_emotion_keywords
@@ -32,15 +52,23 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 
+# 운영에서는 API 스키마 정찰을 막기 위해 Swagger/OpenAPI 문서를 닫는다.
+_docs_kwargs = (
+    {"docs_url": None, "redoc_url": None, "openapi_url": None}
+    if settings.is_production
+    else {}
+)
 app = FastAPI(
     title="Bridge API",
     version="1.0.0",
     lifespan=lifespan,
+    **_docs_kwargs,
 )
 
 # CORS — 모바일/웹 클라이언트 프리플라이트 허용.
 # 인증은 Authorization 헤더 기반이라 credentials(쿠키) 불필요 → allow_credentials=False.
-_cors_origins = [o.strip() for o in settings.cors_origins.split(",") if o.strip()]
+# 운영에서 와일드카드('*')는 무시(fail-safe) — resolve_cors_origins 참조.
+_cors_origins = resolve_cors_origins(settings.cors_origins, settings.is_production)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_cors_origins,
@@ -100,6 +128,7 @@ app.include_router(routines_router.router, prefix="/v1")
 app.include_router(missions_router.router, prefix="/v1")
 app.include_router(notifications_router.router, prefix="/v1")
 app.include_router(reports_router.router, prefix="/v1")
+app.include_router(users_router.router, prefix="/v1")
 
 
 @app.get("/health")

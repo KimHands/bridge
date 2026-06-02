@@ -41,9 +41,10 @@ class AssignedRoutineItem(BaseModel):
     category: str
 
 
+# 데이터 최소화: PHQ-9 원점수(phq9_score)는 응답에 싣지 않는다(CLAUDE.md 점수 비노출).
+# 정성 문구 매핑에 필요한 구간 식별자(phq9_level)만 전달한다.
 class AssessmentResponse(BaseModel):
     assessment_id: str
-    phq9_score: int
     phq9_level: int
     primary_cause: str
     needs_professional_flag: bool
@@ -52,7 +53,7 @@ class AssessmentResponse(BaseModel):
 
 class AssessmentHistoryItem(BaseModel):
     assessment_id: str
-    phq9_score: int
     phq9_level: int
     primary_cause: str
+    needs_professional_flag: bool = False
     taken_at: str
