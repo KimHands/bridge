@@ -71,6 +71,8 @@ export default function AssessmentScreen({ navigation, route }: Props) {
   const [viewLoading, setViewLoading] = useState(isViewMode);
   // PHQ-9 9번(자살사고) 양성 신호. 백엔드 needs_professional_flag를 소비해 위기 안내를 분기한다.
   const [needsProfessional, setNeedsProfessional] = useState(false);
+  // 제출 직후 결과의 PHQ 구간(1~4). 4구간(최중증)도 위기 안내를 분기한다.
+  const [resultTier, setResultTier] = useState<AssessmentTier | null>(null);
 
   // viewMode: 최신 자가평가 결과 조회 후 결과 화면 직진
   useEffect(() => {
@@ -104,6 +106,7 @@ export default function AssessmentScreen({ navigation, route }: Props) {
           throw new Error('Invalid assessment data');
         }
         setViewTier(latest.phq9_level);
+        setResultTier(latest.phq9_level);
         setNeedsProfessional(latest.needs_professional_flag === true);
         setShowResult(true);
       } catch {
@@ -153,11 +156,13 @@ export default function AssessmentScreen({ navigation, route }: Props) {
     setLoading(true);
     try {
       const res = await assessments.submit(answers.map(a => a ?? 0), selectedCause);
-      // 자살사고(9번) 양성 신호를 결과 화면 위기 안내 분기에 사용.
+      // 자살사고(9번) 양성 신호 + 최중증 구간(tier 4)을 결과 화면 위기 안내 분기에 사용.
       setNeedsProfessional(res?.needs_professional_flag === true);
+      if (typeof res?.phq9_level === 'number') setResultTier(res.phq9_level);
     } catch {
-      // 제출 실패 시에도 9번 응답이 양성이면 안전하게 위기 안내를 노출(로컬 폴백).
+      // 제출 실패 시에도 9번 응답이 양성이거나 총점이 최중증이면 안전하게 위기 안내를 노출(로컬 폴백).
       setNeedsProfessional((answers[8] ?? 0) >= 1);
+      if (total >= 20) setResultTier(4);
     }
     setLoading(false);
     setShowResult(true);
@@ -175,7 +180,7 @@ export default function AssessmentScreen({ navigation, route }: Props) {
           <Text style={s.resultShort}>{note.short}</Text>
         </View>
         <View style={{ paddingHorizontal: 24, gap: 14 }}>
-          {needsProfessional && <CrisisSupportCard />}
+          {(needsProfessional || resultTier === 4) && <CrisisSupportCard />}
           <Card>
             <Text style={s.noteLabel}>BRIDGE'S NOTE</Text>
             <Text style={s.noteBody}>{note.note}</Text>
