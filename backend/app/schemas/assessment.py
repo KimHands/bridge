@@ -55,4 +55,5 @@ class AssessmentHistoryItem(BaseModel):
     phq9_score: int
     phq9_level: int
     primary_cause: str
+    needs_professional_flag: bool = False
     taken_at: str

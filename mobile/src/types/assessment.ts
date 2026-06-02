@@ -40,5 +40,6 @@ export interface AssessmentHistoryItem {
   phq9_score: number;
   phq9_level: AssessmentTier;
   primary_cause: CauseCode;
+  needs_professional_flag: boolean;
   taken_at: string;
 }

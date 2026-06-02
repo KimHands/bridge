@@ -133,6 +133,7 @@ async def get_assessments(
             phq9_score=data["score"],
             phq9_level=a.phq_tier,
             primary_cause=data["primary_cause"],
+            needs_professional_flag=data.get("flag", False),
             taken_at=a.created_at.isoformat(),
         ))
 
