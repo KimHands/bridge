@@ -123,6 +123,19 @@ ROUTINE_SEEDS = [
         "target_keywords": [],
         "phq_tier_min": 4, "phq_tier_max": 4,
     },
+    # ── 긍정 강화(트리거 전용, tier 1-3) ──────────────────
+    {
+        "title": "오늘 뿌듯했던 순간 떠올려 메모하기",
+        "description": "오늘 뿌듯했던 순간을 떠올려 짧게 메모해보세요",
+        "target_keywords": ["뿌듯한"],
+        "phq_tier_min": 1, "phq_tier_max": 3,
+    },
+    {
+        "title": "좋아하는 음악 한 곡 듣기",
+        "description": "마음이 편안해지는 음악을 한 곡 들어보세요",
+        "target_keywords": ["평온한"],
+        "phq_tier_min": 1, "phq_tier_max": 3,
+    },
 ]
 
 
