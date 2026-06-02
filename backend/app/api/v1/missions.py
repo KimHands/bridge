@@ -25,6 +25,18 @@ def _iso_week_year(d: date) -> str:
     return f"{iso[0]}-W{iso[1]:02d}"
 
 
+def compute_weekly_score(routine_days: int, diary_days: int) -> tuple[int, bool]:
+    """구성요소별 3일 게이트: 루틴 3일+이면 루틴점수(70%분), 일기 3일+이면 일기점수(30%분)을 각각 적립.
+
+    한쪽만 달성해도 그 구성요소는 보상한다. 양쪽 미달이면 0(차감 없음).
+    """
+    routine_component = round(routine_days / 7 * 70) if routine_days >= 3 else 0
+    diary_component = round(diary_days / 7 * 30) if diary_days >= 3 else 0
+    weekly_score = routine_component + diary_component
+    is_achieved = routine_days >= 3 or diary_days >= 3
+    return weekly_score, is_achieved
+
+
 @router.get("/weekly", response_model=SuccessResponse[WeeklyMissionData])
 async def get_weekly_mission(
     current_user: User = Depends(get_current_user),
@@ -55,8 +67,7 @@ async def get_weekly_mission(
     )
     diary_days = len(de_rows.scalars().all())
 
-    weekly_score = round(routine_days / 7 * 70) + round(diary_days / 7 * 30)
-    is_achieved = routine_days >= 3 and diary_days >= 3
+    weekly_score, is_achieved = compute_weekly_score(routine_days, diary_days)
 
     mp_rows = await db.execute(
         select(MissionPoint.total_score).where(
@@ -66,7 +77,7 @@ async def get_weekly_mission(
         )
     )
     historical_total = sum(mp_rows.scalars().all())
-    total_score = historical_total + (weekly_score if is_achieved else 0)
+    total_score = historical_total + weekly_score
 
     return SuccessResponse(
         data=WeeklyMissionData(
