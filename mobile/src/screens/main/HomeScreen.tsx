@@ -65,16 +65,28 @@ export default function HomeScreen() {
             </Text>
             <Text style={s.heroSub}>오늘도 마음 한 켠을 살펴볼까요?</Text>
           </View>
-          <Pressable
-            style={s.notifBtn}
-            hitSlop={8}
-            onPress={() => Alert.alert('알림', '알림 기능은 준비 중이에요.')}
-          >
-            <Svg width={18} height={18} viewBox="0 0 18 18" fill="none" stroke={palette.textBody} strokeWidth={1.6}>
-              <Path d="M9 2a5 5 0 0 1 5 5v3l1.5 2.5h-13L4 10V7a5 5 0 0 1 5-5z"/>
-              <Path d="M7 14a2 2 0 0 0 4 0"/>
-            </Svg>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <Pressable
+              style={s.notifBtn}
+              hitSlop={8}
+              onPress={() => navigation.navigate('Chat')}
+              accessibilityLabel="마음 대화 열기"
+            >
+              <Svg width={18} height={18} viewBox="0 0 18 18" fill="none" stroke={palette.textBody} strokeWidth={1.6}>
+                <Path d="M3 4.5h12v7H7l-3 2.5v-2.5H3z" strokeLinejoin="round" strokeLinecap="round" />
+              </Svg>
+            </Pressable>
+            <Pressable
+              style={s.notifBtn}
+              hitSlop={8}
+              onPress={() => Alert.alert('알림', '알림 기능은 준비 중이에요.')}
+            >
+              <Svg width={18} height={18} viewBox="0 0 18 18" fill="none" stroke={palette.textBody} strokeWidth={1.6}>
+                <Path d="M9 2a5 5 0 0 1 5 5v3l1.5 2.5h-13L4 10V7a5 5 0 0 1 5-5z"/>
+                <Path d="M7 14a2 2 0 0 0 4 0"/>
+              </Svg>
+            </Pressable>
+          </View>
         </View>
       </LinearGradient>
 
