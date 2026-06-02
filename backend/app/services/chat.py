@@ -62,7 +62,15 @@ async def handle_message(
     except GatewayError:
         return {"reply": chat_guard.SAFE_FALLBACK_REPLY, "is_crisis": False, "crisis_info": None}
 
-    # ④ 출력 사후검증 — 위반 시 폴백 교체(원문 비저장)
+    # ④ 출력 사후검증 — 입력단을 통과한(미탐) 위기 신호가 LLM 출력에 드러나면
+    #    위기 안내(핫라인)로 교체한다. 그 외 도메인 금지어 위반은 폴백 교체(원문 비저장).
+    if chat_guard.detect_crisis(reply):
+        logger.warning("chat reply contained crisis signal; replacing with crisis guidance")
+        return {
+            "reply": chat_guard.CRISIS_REPLY,
+            "is_crisis": True,
+            "crisis_info": chat_guard.crisis_info_payload(),
+        }
     if not chat_guard.is_reply_safe(reply):
         logger.warning("chat reply blocked by domain guard")
         return {"reply": chat_guard.SAFE_FALLBACK_REPLY, "is_crisis": False, "crisis_info": None}
