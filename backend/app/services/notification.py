@@ -159,7 +159,13 @@ async def send_notification(
 
     now_utc = datetime.now(UTC)
 
-    assert len(tokens) == len(tickets), f"token/ticket count mismatch: {len(tokens)} vs {len(tickets)}"
+    # Expo가 계약을 위반해 티켓 수가 다르면 assert로 배치 전체를 죽이지 말고
+    # 경고만 남기고 매칭되는 만큼만 처리한다(zip이 짧은 쪽에서 멈춤).
+    if len(tokens) != len(tickets):
+        logger.warning(
+            "token/ticket count mismatch: %d vs %d (user_id=%s)",
+            len(tokens), len(tickets), user_id,
+        )
     for token, ticket in zip(tokens, tickets):
         ticket_status = ticket.get("status", "error")
         if ticket_status == "ok":
@@ -181,6 +187,15 @@ async def send_notification(
             )
 
     await db.commit()
+
+
+async def _send_isolated(db: AsyncSession, **kwargs) -> None:
+    """배치 루프용 — 한 사용자 발송 실패가 전체 배치를 중단시키지 않도록 격리한다."""
+    try:
+        await send_notification(db=db, **kwargs)
+    except Exception:
+        logger.exception("notification send failed (user_id=%s)", kwargs.get("user_id"))
+        await db.rollback()
 
 
 async def send_diary_nudges() -> None:
@@ -212,7 +227,7 @@ async def send_diary_nudges() -> None:
                 )
             )
             tokens = token_result.scalars().all()
-            await send_notification(
+            await _send_isolated(
                 db=db,
                 user_id=user_id,
                 tokens=list(tokens),
@@ -254,7 +269,7 @@ async def send_routine_reminders() -> None:
                 )
             )
             tokens = token_result.scalars().all()
-            await send_notification(
+            await _send_isolated(
                 db=db,
                 user_id=setting.user_id,
                 tokens=list(tokens),
@@ -264,8 +279,11 @@ async def send_routine_reminders() -> None:
 
 
 async def send_weekly_mission_notifications() -> None:
-    """월요일 09:00 KST — 직전 주 mission_points가 있는 사용자에게 발송."""
-    today = date_cls.today()
+    """월요일 09:00 KST — 직전 주 mission_points가 있는 사용자에게 발송.
+
+    주차는 KST 기준으로 계산해 aggregate_weekly_missions(KST 월 00:05)와 일관시킨다.
+    """
+    today = datetime.now(KST).date()
     last_week_start = today - timedelta(days=today.weekday() + 7)
 
     async with AsyncSessionLocal() as db:
@@ -288,7 +306,7 @@ async def send_weekly_mission_notifications() -> None:
                 )
             )
             tokens = token_result.scalars().all()
-            await send_notification(
+            await _send_isolated(
                 db=db,
                 user_id=user_id,
                 tokens=list(tokens),
@@ -350,7 +368,7 @@ async def send_assessment_reminders() -> None:
                 )
             )
             tokens = token_result.scalars().all()
-            await send_notification(
+            await _send_isolated(
                 db=db,
                 user_id=user_id,
                 tokens=list(tokens),

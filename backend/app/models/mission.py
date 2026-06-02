@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, SmallInteger, String, UniqueConstraint
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, SmallInteger, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -24,6 +24,9 @@ class MissionPoint(Base, TimestampMixin):
 
 class TriggerLog(Base, TimestampMixin):
     __tablename__ = "trigger_logs"
+    __table_args__ = (
+        Index("ix_trigger_logs_user_keyword_created", "user_id", "triggered_keyword", "created_at"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(

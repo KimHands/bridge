@@ -132,16 +132,21 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     if not diaries:
         return
 
-    # ② 일기별 감정 키워드 수집
-    diary_logs = []
-    for diary in diaries:
-        kw_result = await db.execute(
-            select(EmotionKeyword)
-            .join(DiaryEmotionKeyword, DiaryEmotionKeyword.keyword_id == EmotionKeyword.id)
-            .where(DiaryEmotionKeyword.diary_id == diary.id)
-        )
-        kw_names = [kw.name for kw in kw_result.scalars().all()]
-        diary_logs.append({"mood_score": diary.mood_score, "emotion_keywords": kw_names})
+    # ② 일기별 감정 키워드 수집 — N+1 제거: 전체 일기 키워드를 한 번에 조회.
+    diary_ids = [d.id for d in diaries]
+    kw_by_diary: dict = {}
+    kw_result = await db.execute(
+        select(DiaryEmotionKeyword.diary_id, EmotionKeyword.name)
+        .join(EmotionKeyword, EmotionKeyword.id == DiaryEmotionKeyword.keyword_id)
+        .where(DiaryEmotionKeyword.diary_id.in_(diary_ids))
+    )
+    for diary_id, name in kw_result.all():
+        kw_by_diary.setdefault(diary_id, []).append(name)
+
+    diary_logs = [
+        {"mood_score": d.mood_score, "emotion_keywords": kw_by_diary.get(d.id, [])}
+        for d in diaries
+    ]
 
     # ③ 트리거 점수 계산 + 발동 키워드 판정
     trigger_scores, keyword_freq = _calculate_trigger_score(diary_logs)

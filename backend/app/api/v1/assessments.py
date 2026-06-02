@@ -103,7 +103,6 @@ async def create_assessment(
         "success": True,
         "data": AssessmentResponse(
             assessment_id=str(assessment.id),
-            phq9_score=phq9_score,
             phq9_level=phq_tier,
             primary_cause=body.primary_cause,
             needs_professional_flag=needs_professional_flag,
@@ -130,7 +129,6 @@ async def get_assessments(
         data = decrypt_json(a.encrypted_result)
         items.append(AssessmentHistoryItem(
             assessment_id=str(a.id),
-            phq9_score=data["score"],
             phq9_level=a.phq_tier,
             primary_cause=data["primary_cause"],
             needs_professional_flag=data.get("flag", False),
