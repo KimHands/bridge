@@ -9,6 +9,7 @@ from app.core.config import settings
 
 from app.api.v1 import assessments as assessments_router
 from app.api.v1 import auth as auth_router
+from app.api.v1 import chat as chat_router
 from app.api.v1 import diaries as diaries_router
 from app.api.v1 import keywords as keywords_router
 from app.api.v1 import missions as missions_router
@@ -92,6 +93,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 app.include_router(auth_router.router, prefix="/v1")
 app.include_router(assessments_router.router, prefix="/v1")
+app.include_router(chat_router.router, prefix="/v1")
 app.include_router(diaries_router.router, prefix="/v1")
 app.include_router(keywords_router.router, prefix="/v1")
 app.include_router(routines_router.router, prefix="/v1")

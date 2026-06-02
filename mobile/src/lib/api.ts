@@ -20,6 +20,11 @@ import type {
   RoutineCompleteResponse,
   RoutineLibraryResponse,
 } from '@/types/routine';
+import type {
+  ChatMessageRequest,
+  ChatMessageResponse,
+  MemoryListResponse,
+} from '@/types/chat';
 import type { WeeklyReportData, MonthlyReportData, MoodTrendData } from '@/types/report';
 import type { WeeklyMissionData, TotalMissionData } from '@/types/mission';
 import type {
@@ -234,6 +239,20 @@ export const diary = {
   // DELETE /diaries/:id
   delete: (id: string): Promise<void> =>
     api.delete<void>(`/diaries/${id}`).then(r => r.data),
+};
+
+export const chat = {
+  // POST /chat/messages
+  send: (p: ChatMessageRequest): Promise<ChatMessageResponse> =>
+    api.post<ChatMessageResponse>('/chat/messages', p).then(r => r.data),
+
+  // GET /chat/memories
+  memories: (): Promise<MemoryListResponse> =>
+    api.get<MemoryListResponse>('/chat/memories').then(r => r.data),
+
+  // DELETE /chat/memories
+  clearMemories: (): Promise<void> =>
+    api.delete<void>('/chat/memories').then(r => r.data),
 };
 
 export const reports = {
