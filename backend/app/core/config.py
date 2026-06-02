@@ -20,5 +20,12 @@ class Settings(BaseSettings):
     # CORS 허용 origin (콤마 구분). 운영에선 .env로 명시 origin 지정 권장.
     cors_origins: str = "*"
 
+    # 챗봇(마인드로직 게이트웨이) 설정
+    mindlogic_api_key: str = ""
+    mindlogic_base_url: str = "https://factchat-cloud.mindlogic.ai/v1/gateway"
+    chat_model: str = "claude-sonnet-4-6"
+    chat_session_ttl: int = 3600
+    chat_memory_max: int = 20
+
 
 settings = Settings()
