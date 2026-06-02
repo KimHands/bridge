@@ -67,6 +67,25 @@ async def test_banned_reply_replaced_with_fallback(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_reply_with_crisis_signal_routes_to_crisis_guidance(monkeypatch):
+    # B4: 입력단을 통과한(미탐) 위기 신호가 LLM 출력에 드러나면 위기 안내로 교체.
+    async def fake_completion(*a, **k):
+        return "나도 가끔 죽고 싶다는 생각이 들어"  # 위기 신호 포함 출력
+
+    monkeypatch.setattr(chat_service, "chat_completion", fake_completion)
+    monkeypatch.setattr(chat_service, "get_chat_session", lambda uid: _async([]))
+    monkeypatch.setattr(chat_service, "append_chat_turn", lambda *a, **k: _async([]))
+    monkeypatch.setattr(chat_service.chat_memory, "load_memories", lambda db, uid: _async([]))
+
+    resp = await chat_service.handle_message(
+        db=None, user_id="u1", message="요즘 무기력해", background=_FakeBG()
+    )
+    assert resp["is_crisis"] is True
+    assert resp["reply"] == chat_guard.CRISIS_REPLY
+    assert resp["crisis_info"]["show_hospital_cta"] is True
+
+
+@pytest.mark.asyncio
 async def test_normal_reply_passes_through(monkeypatch):
     async def fake_completion(*a, **k):
         return "많이 속상했겠어요. 오늘은 좀 어땠어요?"
