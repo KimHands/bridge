@@ -14,3 +14,18 @@ def test_detect_crisis_false_for_normal_text():
 
 def test_detect_crisis_handles_spacing_variants():
     assert detect_crisis("죽고싶다는 생각이 들어") is True
+
+
+def test_detect_crisis_covers_euphemisms():
+    assert detect_crisis("그냥 없어지고 싶어") is True
+    assert detect_crisis("이제 삶을 끝내고 싶어") is True
+    assert detect_crisis("세상을 떠나고 싶다") is True
+
+
+def test_is_reply_safe_handles_non_string():
+    assert is_reply_safe(None) is False  # type: ignore[arg-type]
+
+
+def test_is_reply_safe_blocks_and_allows():
+    assert is_reply_safe("치료가 필요해요") is False  # 금지어 '치료'
+    assert is_reply_safe("오늘 하루 어땠어요?") is True

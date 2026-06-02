@@ -19,6 +19,9 @@ _CRISIS_TERMS = (
     "목을매",
     "극단적선택",
     "뛰어내리",
+    "없어지고싶",
+    "삶을끝내",
+    "세상을떠나",
 )
 
 
@@ -30,6 +33,8 @@ def detect_crisis(text: str) -> bool:
 
 def is_reply_safe(text: str) -> bool:
     """LLM 응답이 도메인 금지어를 포함하지 않으면 True. 기존 가드를 재사용한다."""
+    if not isinstance(text, str):
+        return False
     try:
         assert_domain_safe(text)
         return True
