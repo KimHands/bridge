@@ -43,7 +43,7 @@ async def load_memories(db: AsyncSession, user_id) -> list[str]:
     result = await db.execute(
         select(ChatMemory)
         .where(ChatMemory.user_id == user_id)
-        .order_by(ChatMemory.created_at.desc())
+        .order_by(ChatMemory.created_at.desc(), ChatMemory.id.desc())
     )
     rows = result.scalars().all()
     return [decrypt_json(r.encrypted_content)["c"] for r in rows]
@@ -54,7 +54,7 @@ async def _enforce_limit(db: AsyncSession, user_id) -> None:
     result = await db.execute(
         select(ChatMemory.id)
         .where(ChatMemory.user_id == user_id)
-        .order_by(ChatMemory.created_at.desc())
+        .order_by(ChatMemory.created_at.desc(), ChatMemory.id.desc())
     )
     ids = [row[0] for row in result.all()]
     overflow = ids[settings.chat_memory_max:]
@@ -75,6 +75,7 @@ async def extract_and_store(db: AsyncSession, user_id, session: list[dict]) -> N
             _build_extract_messages(session), max_tokens=128, temperature=0.2
         )
     except GatewayError:
+        logger.warning("memory extraction skipped: gateway error")
         return
     content = content.strip()
     if not content:
