@@ -1,9 +1,12 @@
-import json
+import logging
 from datetime import timedelta
 
 import redis.asyncio as aioredis
 
 from app.core.config import settings
+from app.core.encryption import decrypt_json, encrypt_json
+
+logger = logging.getLogger(__name__)
 
 _redis: aioredis.Redis | None = None
 
@@ -49,10 +52,20 @@ def _chat_session_key(user_id: str) -> str:
 
 
 async def get_chat_session(user_id: str) -> list[dict]:
-    """최근 대화 턴 리스트를 반환. 없으면 빈 리스트."""
+    """최근 대화 턴 리스트를 복호화해 반환. 없거나 복호화 실패 시 빈 리스트.
+
+    정신건강 맥락의 대화 원문이므로 일기·자가평가와 동일하게 AES-256-GCM으로
+    저장한다. 과거 평문 세션은 복호화에 실패하면 빈 세션으로 간주(TTL로 곧 소멸).
+    """
     r = await get_redis()
     raw = await r.get(_chat_session_key(user_id))
-    return json.loads(raw) if raw else []
+    if not raw:
+        return []
+    try:
+        return decrypt_json(raw)["turns"]
+    except Exception:
+        logger.warning("chat session decrypt failed; treating as empty")
+        return []
 
 
 async def append_chat_turn(
@@ -64,5 +77,11 @@ async def append_chat_turn(
     session.append({"role": "assistant", "content": assistant_msg})
     session = session[-(CHAT_MAX_TURNS * 2):]
     r = await get_redis()
-    await r.setex(_chat_session_key(user_id), ttl_seconds, json.dumps(session, ensure_ascii=False))
+    await r.setex(_chat_session_key(user_id), ttl_seconds, encrypt_json({"turns": session}))
     return session
+
+
+async def delete_chat_session(user_id: str) -> None:
+    """챗봇 대화 세션을 즉시 삭제. 회원 탈퇴 시 Redis 잔존 대화 파기에 사용."""
+    r = await get_redis()
+    await r.delete(_chat_session_key(user_id))

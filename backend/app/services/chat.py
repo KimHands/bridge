@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.llm_gateway import GatewayError, chat_completion
 from app.core.redis import append_chat_turn, get_chat_session
 from app.services import chat_guard, chat_memory
+from app.services.safety_metrics import record_safety_event
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,7 @@ async def handle_message(
     """
     # ① 입력 위기 사전필터 — 감지 시 LLM 미호출, 메모리 저장 안 함
     if chat_guard.detect_crisis(message):
+        await record_safety_event("chat_guard_input")
         return {
             "reply": chat_guard.CRISIS_REPLY,
             "is_crisis": True,
@@ -62,9 +64,19 @@ async def handle_message(
     except GatewayError:
         return {"reply": chat_guard.SAFE_FALLBACK_REPLY, "is_crisis": False, "crisis_info": None}
 
-    # ④ 출력 사후검증 — 위반 시 폴백 교체(원문 비저장)
+    # ④ 출력 사후검증 — 입력단을 통과한(미탐) 위기 신호가 LLM 출력에 드러나면
+    #    위기 안내(핫라인)로 교체한다. 그 외 도메인 금지어 위반은 폴백 교체(원문 비저장).
+    if chat_guard.detect_crisis(reply):
+        logger.warning("chat reply contained crisis signal; replacing with crisis guidance")
+        await record_safety_event("chat_guard_output")
+        return {
+            "reply": chat_guard.CRISIS_REPLY,
+            "is_crisis": True,
+            "crisis_info": chat_guard.crisis_info_payload(),
+        }
     if not chat_guard.is_reply_safe(reply):
         logger.warning("chat reply blocked by domain guard")
+        await record_safety_event("chat_banned_term")
         return {"reply": chat_guard.SAFE_FALLBACK_REPLY, "is_crisis": False, "crisis_info": None}
 
     # ⑤ 세션에 턴 추가(TTL 갱신)

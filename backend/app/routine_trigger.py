@@ -132,16 +132,21 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     if not diaries:
         return
 
-    # ② 일기별 감정 키워드 수집
-    diary_logs = []
-    for diary in diaries:
-        kw_result = await db.execute(
-            select(EmotionKeyword)
-            .join(DiaryEmotionKeyword, DiaryEmotionKeyword.keyword_id == EmotionKeyword.id)
-            .where(DiaryEmotionKeyword.diary_id == diary.id)
-        )
-        kw_names = [kw.name for kw in kw_result.scalars().all()]
-        diary_logs.append({"mood_score": diary.mood_score, "emotion_keywords": kw_names})
+    # ② 일기별 감정 키워드 수집 — N+1 제거: 전체 일기 키워드를 한 번에 조회.
+    diary_ids = [d.id for d in diaries]
+    kw_by_diary: dict = {}
+    kw_result = await db.execute(
+        select(DiaryEmotionKeyword.diary_id, EmotionKeyword.name)
+        .join(EmotionKeyword, EmotionKeyword.id == DiaryEmotionKeyword.keyword_id)
+        .where(DiaryEmotionKeyword.diary_id.in_(diary_ids))
+    )
+    for diary_id, name in kw_result.all():
+        kw_by_diary.setdefault(diary_id, []).append(name)
+
+    diary_logs = [
+        {"mood_score": d.mood_score, "emotion_keywords": kw_by_diary.get(d.id, [])}
+        for d in diaries
+    ]
 
     # ③ 트리거 점수 계산 + 발동 키워드 판정
     trigger_scores, keyword_freq = _calculate_trigger_score(diary_logs)
@@ -158,6 +163,16 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     )
     latest = assess_result.scalar_one_or_none()
     phq_tier = latest.phq_tier if latest else 2
+
+    # ④-a 4구간(최중증)은 키워드 트리거 루틴 배정 영역이 아니라 전문가 연계 영역이다.
+    #      (시드상 4구간 루틴은 '원인 무관 고정' 1개뿐이라 키워드 매칭이 구조적으로 0건)
+    #      조용한 무동작 대신 명시적으로 분기·기록한다. 사용자 대면 전문가 안내는
+    #      자가평가 결과 화면(needs_professional / tier 4 위기 안내)이 담당한다.
+    if phq_tier == 4:
+        logger.info(
+            "trigger skipped for tier-4 user_id=%s (professional referral domain)", user_id
+        )
+        return
 
     # ⑤ 기존 활성 루틴 id 집합
     active_result = await db.execute(

@@ -24,10 +24,9 @@ export interface AssignedRoutineItem {
   category: string;
 }
 
-/** Returned by POST /assessments */
+/** Returned by POST /assessments — 원점수(phq9_score)는 서버가 보내지 않음(데이터 최소화) */
 export interface AssessmentResponse {
   assessment_id: string;
-  phq9_score: number;
   phq9_level: AssessmentTier;
   primary_cause: CauseCode;
   needs_professional_flag: boolean;
@@ -37,8 +36,8 @@ export interface AssessmentResponse {
 /** Single item from GET /assessments history list */
 export interface AssessmentHistoryItem {
   assessment_id: string;
-  phq9_score: number;
   phq9_level: AssessmentTier;
   primary_cause: CauseCode;
+  needs_professional_flag: boolean;
   taken_at: string;
 }

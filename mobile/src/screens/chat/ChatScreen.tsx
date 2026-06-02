@@ -5,20 +5,15 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Phone } from 'phosphor-react-native';
 import { TopBar } from '@/components/BackHeader';
 import { palette, typography } from '@/theme/tokens';
 import { useSendMessage } from '@/hooks/useChatQueries';
 import type { ChatBubble } from '@/types/chat';
+import { CRISIS_HOTLINES, HOSPITAL_MAP_QUERY } from '@/lib/crisis';
 
 const NOTICE =
   'Bridge 챗봇은 정서적 교감을 위한 도구로, 전문적인 상담이나 진단을 제공하지 않아요.';
-
-// 외부 지도 앱에서 "내 주변 정신건강의학과" 검색
-const MAP_QUERY = Platform.select({
-  ios: 'http://maps.apple.com/?q=내 주변 정신건강의학과',
-  android: 'geo:0,0?q=내 주변 정신건강의학과',
-  default: 'https://www.google.com/maps/search/내 주변 정신건강의학과',
-})!;
 
 export default function ChatScreen() {
   const navigation = useNavigation();
@@ -76,10 +71,26 @@ export default function ChatScreen() {
           <View key={b.id}>
             <Bubble bubble={b} />
             {b.isCrisis && b.crisisInfo?.show_hospital_cta && (
-              <Pressable style={s.hospitalBanner} onPress={() => { Linking.openURL(MAP_QUERY).catch(() => {}); }}>
-                <Text style={s.hospitalTitle}>전문가와 이야기 나눠보고 싶다면</Text>
-                <Text style={s.hospitalCta}>내 주변 기관 찾아보기 →</Text>
-              </Pressable>
+              <View style={s.crisisBanner}>
+                <Text style={s.crisisBannerTitle}>지금 바로 도움받을 수 있어요</Text>
+                {CRISIS_HOTLINES.map(h => (
+                  <Pressable
+                    key={h.number}
+                    style={s.hotlineRow}
+                    onPress={() => { Linking.openURL(`tel:${h.number.replace(/-/g, '')}`).catch(() => {}); }}
+                  >
+                    <Phone size={18} color={palette.danger} weight="duotone" />
+                    <Text style={s.hotlineLabel}>{h.label}</Text>
+                    <Text style={s.hotlineNumber}>{h.number}</Text>
+                  </Pressable>
+                ))}
+                <Pressable
+                  style={s.mapRow}
+                  onPress={() => { Linking.openURL(HOSPITAL_MAP_QUERY).catch(() => {}); }}
+                >
+                  <Text style={s.mapText}>내 주변 기관 찾아보기 →</Text>
+                </Pressable>
+              </View>
             )}
           </View>
         ))}
@@ -144,9 +155,13 @@ const s = StyleSheet.create({
   bubbleCrisis: { borderColor: palette.danger, borderWidth: 1.5, backgroundColor: '#FBE9E9' },
   bubbleText: { ...typography.body, color: palette.textBody },
   bubbleTextUser: { color: palette.textInverse },
-  hospitalBanner: { backgroundColor: palette.mintBgWash, borderRadius: 14, padding: 14, marginBottom: 12 },
-  hospitalTitle: { ...typography.captionBold, color: palette.mintDeep },
-  hospitalCta: { ...typography.bodyBold, color: palette.mintDeep, marginTop: 4 },
+  crisisBanner: { backgroundColor: '#FBE9E9', borderRadius: 14, padding: 14, marginBottom: 12, gap: 8 },
+  crisisBannerTitle: { ...typography.captionBold, color: palette.danger, marginBottom: 2 },
+  hotlineRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 10, paddingVertical: 10, paddingHorizontal: 12 },
+  hotlineLabel: { flex: 1, ...typography.body, fontWeight: '600', color: palette.textHeading },
+  hotlineNumber: { ...typography.bodyBold, color: palette.danger },
+  mapRow: { alignItems: 'center', paddingVertical: 6 },
+  mapText: { ...typography.bodyBold, color: palette.danger },
   typing: { ...typography.caption, color: palette.textMuted, marginLeft: 8, marginBottom: 8 },
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingTop: 12, gap: 8, borderTopWidth: 1, borderTopColor: palette.borderSubtle, backgroundColor: palette.surface },
   input: { flex: 1, maxHeight: 120, minHeight: 44, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: palette.bgAlt, borderRadius: 22, ...typography.body, color: palette.textHeading },
