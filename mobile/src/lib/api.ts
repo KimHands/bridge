@@ -292,6 +292,10 @@ export const me = {
   update: (p: { nickname?: string }): Promise<UserMe> =>
     api.patch<UserMe>('/auth/me', p).then(r => r.data),
   // /me/stats 엔드포인트 없음 — 통계는 missions.weekly + diary.list 조합으로 대체
+
+  // DELETE /users/me — 회원 탈퇴(비밀번호 재확인). 성공 시 모든 개인정보 즉시 파기.
+  deleteAccount: (password: string): Promise<{ deleted: boolean }> =>
+    api.delete<{ deleted: boolean }>('/users/me', { data: { password } }).then(r => r.data),
 };
 
 export const notifications = {
