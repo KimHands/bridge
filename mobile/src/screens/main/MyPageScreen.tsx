@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, Alert, Modal, TextInput, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, fontFamily } from '@/theme/tokens';
 import { Card, Pill } from '@/components/atoms';
 import { useAuth } from '@/store/auth';
+import { getApiError } from '@/lib/api';
 import { useWeeklyMission } from '@/hooks/useMissionQueries';
 import { useDiaryList } from '@/hooks/useDiaryQueries';
 import {
@@ -28,10 +29,13 @@ function scoreToLevel(score: number): number {
 
 export default function MyPageScreen() {
   const navigation = useNavigation<Nav>();
-  const { user, logout } = useAuth();
+  const { user, logout, deleteAccount } = useAuth();
   const initial = (user?.nickname?.[0] ?? 'B').toUpperCase();
 
   const [darkOn, setDarkOn] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deletePw, setDeletePw] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const { data: weeklyMission } = useWeeklyMission();
   const { data: diaryList } = useDiaryList();
@@ -50,6 +54,37 @@ export default function MyPageScreen() {
 
   const notImplemented = (label: string) =>
     Alert.alert(label, '해당 기능은 준비 중이에요.');
+
+  // 1단계: 파기 안내 경고 → 동의 시 비밀번호 확인 모달 오픈
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      '회원 탈퇴',
+      '탈퇴하면 일기·감정 기록·자가평가·루틴·챗봇 대화 등 모든 데이터가 즉시 영구 삭제되며 복구할 수 없어요. 계속할까요?',
+      [
+        { text: '취소', style: 'cancel' },
+        { text: '계속', style: 'destructive', onPress: () => { setDeletePw(''); setDeleteOpen(true); } },
+      ],
+    );
+  };
+
+  // 2단계: 비밀번호 재확인 후 탈퇴 실행
+  const submitDeleteAccount = async () => {
+    if (!deletePw.trim()) {
+      Alert.alert('비밀번호 확인', '비밀번호를 입력해 주세요.');
+      return;
+    }
+    setDeleting(true);
+    try {
+      await deleteAccount(deletePw);
+      setDeleteOpen(false);
+      // deleteAccount가 user/token을 비우면 네비게이터가 인증 스택으로 자동 전환됨.
+    } catch (e) {
+      const err = getApiError(e);
+      Alert.alert('탈퇴 실패', err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: palette.bg }} edges={['top']}>
@@ -109,9 +144,41 @@ export default function MyPageScreen() {
         <Pressable onPress={handleLogout} style={s.logoutBtn}>
           <Text style={{ fontSize: 14, fontWeight: '600', color: palette.textCaption }}>로그아웃</Text>
         </Pressable>
+        <Pressable onPress={handleDeleteAccount} style={s.deleteBtn}>
+          <Text style={{ fontSize: 13, fontWeight: '600', color: palette.danger }}>회원 탈퇴</Text>
+        </Pressable>
         <Text style={s.version}>v1.0.0 · Bridge</Text>
       </View>
     </ScrollView>
+
+    <Modal visible={deleteOpen} transparent animationType="fade" onRequestClose={() => !deleting && setDeleteOpen(false)}>
+      <View style={s.modalBackdrop}>
+        <View style={s.modalCard}>
+          <Text style={s.modalTitle}>회원 탈퇴</Text>
+          <Text style={s.modalBody}>본인 확인을 위해 비밀번호를 입력해 주세요. 확인 후 모든 데이터가 즉시 영구 삭제됩니다.</Text>
+          <TextInput
+            style={s.modalInput}
+            placeholder="비밀번호"
+            placeholderTextColor={palette.textMuted}
+            secureTextEntry
+            autoFocus
+            value={deletePw}
+            onChangeText={setDeletePw}
+            editable={!deleting}
+          />
+          <View style={s.modalRow}>
+            <Pressable style={[s.modalBtn, s.modalCancel]} disabled={deleting} onPress={() => setDeleteOpen(false)}>
+              <Text style={{ fontSize: 14, fontWeight: '600', color: palette.textCaption }}>취소</Text>
+            </Pressable>
+            <Pressable style={[s.modalBtn, s.modalDanger]} disabled={deleting} onPress={submitDeleteAccount}>
+              {deleting
+                ? <ActivityIndicator color="#fff" size="small" />
+                : <Text style={{ fontSize: 14, fontWeight: '700', color: '#fff' }}>탈퇴하기</Text>}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
     </SafeAreaView>
   );
 }
@@ -194,5 +261,15 @@ const s = StyleSheet.create({
   switch: { width: 36, height: 22, borderRadius: 11, position: 'relative' },
   thumb: { position: 'absolute', top: 2, width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
   logoutBtn: { padding: 16, borderRadius: 14, borderWidth: 1, borderColor: palette.border, alignItems: 'center' },
+  deleteBtn: { paddingVertical: 10, alignItems: 'center' },
   version: { textAlign: 'center', fontSize: 11, color: palette.textMuted, fontFamily: fontFamily.enBold },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', paddingHorizontal: 32 },
+  modalCard: { backgroundColor: palette.bg, borderRadius: 18, padding: 22 },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: palette.textHeading },
+  modalBody: { marginTop: 10, fontSize: 13, color: palette.textBody, lineHeight: 20 },
+  modalInput: { marginTop: 16, borderWidth: 1, borderColor: palette.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: palette.textHeading },
+  modalRow: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  modalBtn: { flex: 1, paddingVertical: 13, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  modalCancel: { borderWidth: 1, borderColor: palette.border },
+  modalDanger: { backgroundColor: palette.danger },
 });

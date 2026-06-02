@@ -2,6 +2,7 @@
 import { create } from 'zustand';
 import {
   auth,
+  me,
   notifications,
   getToken, setToken, clearToken,
   getRefreshToken, setRefreshToken, clearRefreshToken,
@@ -33,6 +34,7 @@ type AuthState = {
   login: (email: string, password: string) => Promise<User>;
   signup: (p: { email: string; password: string; nickname: string }) => Promise<User>;
   logout: () => Promise<void>;
+  deleteAccount: (password: string) => Promise<void>;
 };
 
 function tokenPayloadToUser(payload: TokenPayload): User {
@@ -106,6 +108,20 @@ export const useAuth = create<AuthState>((set) => ({
     const refreshToken = await getRefreshToken();
     try {
       if (refreshToken) await auth.logout(refreshToken);
+    } catch { /* ignore */ }
+    await clearToken();
+    await clearRefreshToken();
+    await clearStoredUser();
+    set({ user: null, token: null });
+  },
+
+  deleteAccount: async (password) => {
+    // 서버에서 비밀번호 재확인 후 모든 개인정보 즉시 파기. 실패 시 예외를 그대로 전파.
+    await me.deleteAccount(password);
+    // 성공 시 푸시 토큰 비활성화 시도(서버 데이터는 이미 삭제됨, best-effort).
+    try {
+      const token = await getExpoPushToken();
+      if (token) await notifications.deactivateToken(token);
     } catch { /* ignore */ }
     await clearToken();
     await clearRefreshToken();

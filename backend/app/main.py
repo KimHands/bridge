@@ -16,6 +16,7 @@ from app.api.v1 import missions as missions_router
 from app.api.v1 import notifications as notifications_router
 from app.api.v1 import reports as reports_router
 from app.api.v1 import routines as routines_router
+from app.api.v1 import users as users_router
 from app.core.database import AsyncSessionLocal
 from app.scheduler import scheduler
 from app.seeds.emotion_keywords import seed_emotion_keywords
@@ -100,6 +101,7 @@ app.include_router(routines_router.router, prefix="/v1")
 app.include_router(missions_router.router, prefix="/v1")
 app.include_router(notifications_router.router, prefix="/v1")
 app.include_router(reports_router.router, prefix="/v1")
+app.include_router(users_router.router, prefix="/v1")
 
 
 @app.get("/health")
