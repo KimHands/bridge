@@ -3,6 +3,7 @@ from datetime import date, datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -40,15 +41,21 @@ async def list_my_routines(
     rows = ur_result.all()
 
     today = date.today()
-    routines = []
-    for ur, routine in rows:
-        log_result = await db.execute(
-            select(RoutineLog).where(
-                RoutineLog.user_routine_id == ur.id,
+    # N+1 제거: 활성 루틴들의 오늘 완료 로그를 한 번에 조회.
+    ur_ids = [ur.id for ur, _ in rows]
+    completed_ids: set = set()
+    if ur_ids:
+        log_rows = await db.execute(
+            select(RoutineLog.user_routine_id).where(
+                RoutineLog.user_routine_id.in_(ur_ids),
                 RoutineLog.completed_date == today,
             )
         )
-        is_completed_today = log_result.scalar_one_or_none() is not None
+        completed_ids = set(log_rows.scalars().all())
+
+    routines = []
+    for ur, routine in rows:
+        is_completed_today = ur.id in completed_ids
 
         routines.append(RoutineItem(
             user_routine_id=str(ur.id),
@@ -219,7 +226,15 @@ async def complete_routine(
         completed_date=today,
         created_at=now,
     ))
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError:
+        # 동시 더블탭 race — 위 SELECT를 둘 다 통과해도 유니크 제약이 막는다.
+        await db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "ROUTINE_ALREADY_COMPLETED_TODAY", "message": "오늘 이미 완료 처리된 루틴입니다"},
+        )
 
     return {
         "success": True,

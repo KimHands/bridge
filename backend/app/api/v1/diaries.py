@@ -151,14 +151,21 @@ async def list_diaries(
     has_next = len(entries) > limit
     entries = entries[:limit]
 
+    # N+1 제거: 목록 일기들의 감정 키워드를 한 번에 조회 후 diary_id로 그룹핑.
+    diary_ids = [e.id for e in entries]
+    kw_by_diary: dict = {}
+    if diary_ids:
+        kw_rows = await db.execute(
+            select(DiaryEmotionKeyword.diary_id, EmotionKeyword.name)
+            .join(EmotionKeyword, EmotionKeyword.id == DiaryEmotionKeyword.keyword_id)
+            .where(DiaryEmotionKeyword.diary_id.in_(diary_ids))
+        )
+        for diary_id, name in kw_rows.all():
+            kw_by_diary.setdefault(diary_id, []).append(name)
+
     items = []
     for e in entries:
-        kw_result = await db.execute(
-            select(EmotionKeyword)
-            .join(DiaryEmotionKeyword, DiaryEmotionKeyword.keyword_id == EmotionKeyword.id)
-            .where(DiaryEmotionKeyword.diary_id == e.id)
-        )
-        kw_names = [kw.name for kw in kw_result.scalars().all()]
+        kw_names = kw_by_diary.get(e.id, [])
 
         memo_preview = None
         if e.encrypted_memo:

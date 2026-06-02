@@ -1,7 +1,10 @@
 import uuid
 from datetime import date, datetime
 
-from sqlalchemy import ARRAY, Boolean, Date, DateTime, ForeignKey, Integer, SmallInteger, String, Text
+from sqlalchemy import (
+    ARRAY, Boolean, Date, DateTime, ForeignKey, Index, Integer,
+    SmallInteger, String, Text, UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -21,6 +24,7 @@ class Routine(Base):
 
 class UserRoutine(Base, TimestampMixin):
     __tablename__ = "user_routines"
+    __table_args__ = (Index("ix_user_routines_user_active", "user_id", "is_active"),)
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
@@ -34,6 +38,10 @@ class UserRoutine(Base, TimestampMixin):
 
 class RoutineLog(Base):
     __tablename__ = "routine_logs"
+    # 하루 한 사용자루틴당 완료 1건 — 동시 더블탭 중복 삽입을 DB 레벨에서 방어.
+    __table_args__ = (
+        UniqueConstraint("user_routine_id", "completed_date", name="uq_routine_log_user_date"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_routine_id: Mapped[uuid.UUID] = mapped_column(
