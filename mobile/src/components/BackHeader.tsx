@@ -51,8 +51,8 @@ const styles = StyleSheet.create({
     backgroundColor: palette.bg,
   },
   transparent: { backgroundColor: 'transparent' },
-  side: { width: 40, alignItems: 'flex-start', justifyContent: 'center' },
-  trailingSide: { alignItems: 'flex-end' },
+  side: { minWidth: 40, alignItems: 'flex-start', justifyContent: 'center' },
+  trailingSide: { alignItems: 'flex-end', paddingLeft: 8 },
   backBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   title: {
     flex: 1, textAlign: 'center',

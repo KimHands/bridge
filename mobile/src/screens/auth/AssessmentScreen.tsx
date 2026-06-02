@@ -189,30 +189,32 @@ export default function AssessmentScreen({ navigation, route }: Props) {
       <View style={{ flex: 1, backgroundColor: palette.bg }}>
         <TopBar
           onBack={() => setStep(8)}
-          trailing={<Text style={s.counter}>마지막 단계</Text>}
+          trailing={<Text style={s.counter} numberOfLines={1}>마지막 단계</Text>}
         />
-        <View style={s.qWrap}>
-          <Text style={s.qNum}>마지막 질문</Text>
-          <Text style={s.qText}>요즘 마음이 무거운 주된 이유가 있다면 무엇인가요?</Text>
-        </View>
-        <View style={s.causeGrid}>
-          {CAUSES.map((c, i) => {
-            const isLast = i === CAUSES.length - 1;
-            return (
-              <Pressable
-                key={c.code}
-                onPress={() => submitWithCause(c.code)}
-                disabled={loading}
-                style={[isLast ? s.causeBtnFull : s.causeBtn, loading && { opacity: 0.5 }]}
-              >
-                <View style={isLast ? s.causeIconBoxSmall : s.causeIconBox}>
-                  <CauseIcon code={c.code} size={isLast ? 28 : 36} />
-                </View>
-                <Text style={[s.causeLabel, isLast && s.causeLabelFull]}>{c.label}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <ScrollView contentContainerStyle={s.causeScroll}>
+          <View style={s.qWrap}>
+            <Text style={s.qNum}>마지막 질문</Text>
+            <Text style={s.qText}>요즘 마음이 무거운 주된 이유가 있다면 무엇인가요?</Text>
+          </View>
+          <View style={s.causeGrid}>
+            {CAUSES.map((c, i) => {
+              const isLast = i === CAUSES.length - 1;
+              return (
+                <Pressable
+                  key={c.code}
+                  onPress={() => submitWithCause(c.code)}
+                  disabled={loading}
+                  style={[isLast ? s.causeBtnFull : s.causeBtn, loading && { opacity: 0.5 }]}
+                >
+                  <View style={isLast ? s.causeIconBoxSmall : s.causeIconBox}>
+                    <CauseIcon code={c.code} size={isLast ? 28 : 36} />
+                  </View>
+                  <Text style={[s.causeLabel, isLast && s.causeLabelFull]}>{c.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </ScrollView>
       </View>
     );
   }
@@ -264,10 +266,12 @@ const s = StyleSheet.create({
   },
   optionSelected: { backgroundColor: palette.primary, borderColor: palette.primary },
   optionLabel: { fontSize: 15, fontWeight: '600', color: palette.textHeading },
-  causeGrid: { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 16 },
+  causeScroll: { paddingBottom: 40 },
+  causeGrid: { paddingHorizontal: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginTop: 16 },
   causeBtn: {
     width: '48%',
     aspectRatio: 1,
+    marginBottom: 12,
     borderRadius: 20,
     backgroundColor: '#fff',
     alignItems: 'center',
