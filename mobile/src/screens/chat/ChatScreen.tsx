@@ -20,13 +20,12 @@ const MAP_QUERY = Platform.select({
   default: 'https://www.google.com/maps/search/내 주변 정신건강의학과',
 })!;
 
-let _id = 0;
-const nextId = () => `b${_id++}`;
-
 export default function ChatScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
-  const [bubbles, setBubbles] = React.useState<ChatBubble[]>([
+  const idRef = React.useRef(0);
+  const nextId = React.useCallback(() => `b${idRef.current++}`, []);
+  const [bubbles, setBubbles] = React.useState<ChatBubble[]>(() => [
     { id: nextId(), role: 'system', text: NOTICE },
   ]);
   const [input, setInput] = React.useState('');
@@ -77,7 +76,7 @@ export default function ChatScreen() {
           <View key={b.id}>
             <Bubble bubble={b} />
             {b.isCrisis && b.crisisInfo?.show_hospital_cta && (
-              <Pressable style={s.hospitalBanner} onPress={() => Linking.openURL(MAP_QUERY)}>
+              <Pressable style={s.hospitalBanner} onPress={() => { Linking.openURL(MAP_QUERY).catch(() => {}); }}>
                 <Text style={s.hospitalTitle}>전문가와 이야기 나눠보고 싶다면</Text>
                 <Text style={s.hospitalCta}>내 주변 기관 찾아보기 →</Text>
               </Pressable>
@@ -101,6 +100,7 @@ export default function ChatScreen() {
           style={[s.sendBtn, (!input.trim() || isPending) && s.sendBtnOff]}
           onPress={send}
           disabled={!input.trim() || isPending}
+          accessibilityLabel="전송"
         >
           <Text style={s.sendText}>전송</Text>
         </Pressable>
