@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, Pressable, ScrollView, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/navigation/Navigation';
 import { palette, fontFamily } from '@/theme/tokens';
@@ -8,7 +8,8 @@ import { TopBar, DecorativeBlobs } from '@/components/BackHeader';
 import { assessments } from '@/lib/api';
 import type { CauseCode, AssessmentTier } from '@/types/assessment';
 import { CauseIcon } from '@/lib/causeIcon';
-import { Plant } from 'phosphor-react-native';
+import { CRISIS_HOTLINES, HOSPITAL_MAP_QUERY } from '@/lib/crisis';
+import { Plant, Heart, Phone } from 'phosphor-react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Assessment'>;
 
@@ -68,6 +69,8 @@ export default function AssessmentScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(false);
   const [viewTier, setViewTier] = useState<AssessmentTier | null>(null);
   const [viewLoading, setViewLoading] = useState(isViewMode);
+  // PHQ-9 9번(자살사고) 양성 신호. 백엔드 needs_professional_flag를 소비해 위기 안내를 분기한다.
+  const [needsProfessional, setNeedsProfessional] = useState(false);
 
   // viewMode: 최신 자가평가 결과 조회 후 결과 화면 직진
   useEffect(() => {
@@ -101,6 +104,7 @@ export default function AssessmentScreen({ navigation, route }: Props) {
           throw new Error('Invalid assessment data');
         }
         setViewTier(latest.phq9_level);
+        setNeedsProfessional(latest.needs_professional_flag === true);
         setShowResult(true);
       } catch {
         if (cancelled) return;
@@ -148,8 +152,13 @@ export default function AssessmentScreen({ navigation, route }: Props) {
     setCause(selectedCause);
     setLoading(true);
     try {
-      await assessments.submit(answers.map(a => a ?? 0), selectedCause);
-    } catch { /* ignore */ }
+      const res = await assessments.submit(answers.map(a => a ?? 0), selectedCause);
+      // 자살사고(9번) 양성 신호를 결과 화면 위기 안내 분기에 사용.
+      setNeedsProfessional(res?.needs_professional_flag === true);
+    } catch {
+      // 제출 실패 시에도 9번 응답이 양성이면 안전하게 위기 안내를 노출(로컬 폴백).
+      setNeedsProfessional((answers[8] ?? 0) >= 1);
+    }
     setLoading(false);
     setShowResult(true);
   };
@@ -166,6 +175,7 @@ export default function AssessmentScreen({ navigation, route }: Props) {
           <Text style={s.resultShort}>{note.short}</Text>
         </View>
         <View style={{ paddingHorizontal: 24, gap: 14 }}>
+          {needsProfessional && <CrisisSupportCard />}
           <Card>
             <Text style={s.noteLabel}>BRIDGE'S NOTE</Text>
             <Text style={s.noteBody}>{note.note}</Text>
@@ -247,6 +257,38 @@ export default function AssessmentScreen({ navigation, route }: Props) {
           </Pressable>
         ))}
       </View>
+    </View>
+  );
+}
+
+// 자살사고(PHQ-9 9번) 양성 시 결과 화면에 노출하는 위기 연계 안내.
+// 규제 가이드 준수: '치료·진단·병원' 등 의료 표현 대신 '전문기관/기관'을 사용한다.
+function CrisisSupportCard() {
+  const callHotline = (number: string) =>
+    Linking.openURL(`tel:${number.replace(/-/g, '')}`).catch(() => {});
+
+  return (
+    <View style={s.crisisCard}>
+      <View style={s.crisisHeader}>
+        <Heart size={20} color={palette.danger} weight="fill" />
+        <Text style={s.crisisTitle}>혼자 견디지 않아도 괜찮아요</Text>
+      </View>
+      <Text style={s.crisisBody}>
+        지금 많이 힘든 마음이 느껴져요. 아래 전문기관에서 24시간 도움을 받을 수 있어요.
+      </Text>
+      {CRISIS_HOTLINES.map(h => (
+        <Pressable key={h.number} style={s.crisisHotline} onPress={() => callHotline(h.number)}>
+          <Phone size={18} color={palette.danger} weight="duotone" />
+          <Text style={s.crisisHotlineLabel}>{h.label}</Text>
+          <Text style={s.crisisHotlineNumber}>{h.number}</Text>
+        </Pressable>
+      ))}
+      <Pressable
+        style={s.crisisMap}
+        onPress={() => { Linking.openURL(HOSPITAL_MAP_QUERY).catch(() => {}); }}
+      >
+        <Text style={s.crisisMapText}>내 주변 기관 찾아보기 →</Text>
+      </Pressable>
     </View>
   );
 }
@@ -334,4 +376,17 @@ const s = StyleSheet.create({
   resultShort: { marginTop: 8, fontSize: 28, fontWeight: '800', color: palette.textHeading },
   noteLabel: { fontSize: 13, color: palette.primary, fontWeight: '700', fontFamily: fontFamily.enBold, letterSpacing: 1.2 },
   noteBody: { marginTop: 10, fontSize: 14, color: palette.textBody, lineHeight: 22 },
+  // crisis support
+  crisisCard: { backgroundColor: '#FBE9E9', borderRadius: 18, padding: 18, gap: 12 },
+  crisisHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  crisisTitle: { fontSize: 16, fontWeight: '800', color: palette.textHeading, letterSpacing: -0.3 },
+  crisisBody: { fontSize: 13, color: palette.textBody, lineHeight: 20 },
+  crisisHotline: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#fff', borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14,
+  },
+  crisisHotlineLabel: { flex: 1, fontSize: 14, fontWeight: '600', color: palette.textHeading },
+  crisisHotlineNumber: { fontSize: 15, fontWeight: '800', color: palette.danger, fontFamily: fontFamily.enBold },
+  crisisMap: { alignItems: 'center', paddingVertical: 10 },
+  crisisMapText: { fontSize: 13, fontWeight: '700', color: palette.danger },
 });
