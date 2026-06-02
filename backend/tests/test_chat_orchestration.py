@@ -118,3 +118,83 @@ async def test_gateway_failure_returns_fallback(monkeypatch):
     )
     assert resp["is_crisis"] is False
     assert resp["reply"] == chat_guard.SAFE_FALLBACK_REPLY
+
+
+class _Spy:
+    def __init__(self):
+        self.events = []
+
+    async def __call__(self, event_type, **kwargs):
+        self.events.append(event_type)
+
+
+@pytest.mark.asyncio
+async def test_crisis_input_records_guard_input(monkeypatch):
+    spy = _Spy()
+    monkeypatch.setattr(chat_service, "record_safety_event", spy)
+
+    bg = _FakeBG()
+    await chat_service.handle_message(
+        db=None, user_id="u1", message="죽고 싶어", background=bg
+    )
+    assert spy.events == ["chat_guard_input"]
+
+
+@pytest.mark.asyncio
+async def test_banned_reply_records_banned_term(monkeypatch):
+    spy = _Spy()
+    monkeypatch.setattr(chat_service, "record_safety_event", spy)
+
+    async def fake_completion(*a, **k):
+        return "당신은 치료가 필요해요"  # 금지어 '치료'
+
+    monkeypatch.setattr(chat_service, "chat_completion", fake_completion)
+    monkeypatch.setattr(chat_service, "get_chat_session", lambda uid: _async([]))
+    monkeypatch.setattr(chat_service, "append_chat_turn", lambda *a, **k: _async([]))
+    monkeypatch.setattr(chat_service.chat_memory, "load_memories", lambda db, uid: _async([]))
+
+    bg = _FakeBG()
+    await chat_service.handle_message(
+        db=None, user_id="u1", message="안녕", background=bg
+    )
+    assert spy.events == ["chat_banned_term"]
+
+
+@pytest.mark.asyncio
+async def test_crisis_in_reply_records_guard_output(monkeypatch):
+    spy = _Spy()
+    monkeypatch.setattr(chat_service, "record_safety_event", spy)
+
+    async def fake_completion(*a, **k):
+        return "죽고 싶다는 생각이 드네요"  # 출력단 위기 신호
+
+    monkeypatch.setattr(chat_service, "chat_completion", fake_completion)
+    monkeypatch.setattr(chat_service, "get_chat_session", lambda uid: _async([]))
+    monkeypatch.setattr(chat_service.chat_memory, "load_memories", lambda db, uid: _async([]))
+
+    bg = _FakeBG()
+    resp = await chat_service.handle_message(
+        db=None, user_id="u1", message="안녕", background=bg
+    )
+    assert resp["is_crisis"] is True
+    assert spy.events == ["chat_guard_output"]
+
+
+@pytest.mark.asyncio
+async def test_normal_reply_records_nothing(monkeypatch):
+    spy = _Spy()
+    monkeypatch.setattr(chat_service, "record_safety_event", spy)
+
+    async def fake_completion(*a, **k):
+        return "오늘도 잘 지냈길 바라요"  # 정상 응답
+
+    monkeypatch.setattr(chat_service, "chat_completion", fake_completion)
+    monkeypatch.setattr(chat_service, "get_chat_session", lambda uid: _async([]))
+    monkeypatch.setattr(chat_service, "append_chat_turn", lambda *a, **k: _async([]))
+    monkeypatch.setattr(chat_service.chat_memory, "load_memories", lambda db, uid: _async([]))
+
+    bg = _FakeBG()
+    await chat_service.handle_message(
+        db=None, user_id="u1", message="안녕", background=bg
+    )
+    assert spy.events == []
