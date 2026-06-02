@@ -38,6 +38,8 @@ def _build_upsert(dialect_name: str, event_type: str, day: date):
     stmt = insert(SafetyEventCounter).values(
         event_type=event_type, day_bucket=day, count=1
     )
+    # updated_at은 수동으로 갱신한다 — TimestampMixin의 onupdate는 Core upsert(on_conflict)에
+    # 발동하지 않으므로, 빼면 충돌 시 updated_at이 최초값에 동결된다.
     return stmt.on_conflict_do_update(
         index_elements=["event_type", "day_bucket"],
         set_={"count": SafetyEventCounter.count + 1, "updated_at": datetime.now(UTC)},
