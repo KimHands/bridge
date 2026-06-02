@@ -17,6 +17,7 @@ from app.schemas.assessment import (
     AssignedRoutineItem,
 )
 from app.schemas.auth import SuccessResponse
+from app.services.safety_metrics import assessment_crisis_events, record_safety_event
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
 
@@ -89,6 +90,11 @@ async def create_assessment(
 
     await db.commit()
     await db.refresh(assessment)
+
+    for event_type in assessment_crisis_events(
+        needs_professional_flag=needs_professional_flag, phq_tier=phq_tier
+    ):
+        await record_safety_event(event_type)
 
     assigned = [
         AssignedRoutineItem(
