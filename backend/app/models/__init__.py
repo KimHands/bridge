@@ -6,6 +6,7 @@ from app.models.keyword import EmotionKeyword, DiaryEmotionKeyword, SituationKey
 from app.models.routine import Routine, UserRoutine, RoutineLog
 from app.models.mission import MissionPoint, TriggerLog
 from app.models.notification import DeviceToken, NotificationSetting, NotificationLog
+from app.models.chat import ChatMemory
 
 __all__ = [
     "Base",
@@ -23,4 +24,5 @@ __all__ = [
     "DeviceToken",
     "NotificationSetting",
     "NotificationLog",
+    "ChatMemory",
 ]
