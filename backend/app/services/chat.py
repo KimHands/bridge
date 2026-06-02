@@ -72,6 +72,6 @@ async def handle_message(
 
     # ⑥ 주기적 특징 메모리 추출(BackgroundTask, 위기 아닐 때만)
     if chat_memory.should_extract(len(updated)):
-        background.add_task(chat_memory.extract_and_store, db, user_id, updated)
+        background.add_task(chat_memory.extract_and_store, user_id, updated)
 
     return {"reply": reply, "is_crisis": False, "crisis_info": None}

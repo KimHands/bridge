@@ -5,6 +5,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.database import AsyncSessionLocal
 from app.core.encryption import decrypt_json, encrypt_json
 from app.core.llm_gateway import GatewayError, chat_completion
 from app.models.chat import ChatMemory
@@ -68,8 +69,11 @@ async def clear_memories(db: AsyncSession, user_id) -> None:
     await db.commit()
 
 
-async def extract_and_store(db: AsyncSession, user_id, session: list[dict]) -> None:
-    """세션에서 특징을 추출해 저장하고 상한을 적용한다. BackgroundTask에서 호출."""
+async def extract_and_store(user_id, session: list[dict]) -> None:
+    """세션에서 특징을 추출해 저장하고 상한을 적용한다. BackgroundTask에서 호출.
+
+    요청 스코프 세션은 BackgroundTask 실행 전에 닫히므로, 자체 세션을 연다.
+    """
     try:
         content = await chat_completion(
             _build_extract_messages(session), max_tokens=128, temperature=0.2
@@ -80,6 +84,7 @@ async def extract_and_store(db: AsyncSession, user_id, session: list[dict]) -> N
     content = content.strip()
     if not content:
         return
-    await _store_memory(db, user_id, content)
-    await _enforce_limit(db, user_id)
-    await db.commit()
+    async with AsyncSessionLocal() as db:
+        await _store_memory(db, user_id, content)
+        await _enforce_limit(db, user_id)
+        await db.commit()
