@@ -37,6 +37,7 @@ import NotificationSettingsScreen from '@/screens/my/NotificationSettingsScreen'
 import LegalScreen         from '@/screens/legal/LegalScreen';
 import type { LegalKind }  from '@/screens/legal/LegalScreen';
 import ChatScreen          from '@/screens/chat/ChatScreen';
+import SupportConnectScreen from '@/screens/support/SupportConnectScreen';
 
 import TabBarIcon          from '@/components/TabBarIcon';
 
@@ -60,6 +61,7 @@ export type RootStackParamList = {
   NotificationSettings: undefined;
   Legal: { kind: LegalKind };
   Chat: undefined;
+  SupportConnect: undefined;
 };
 
 export type MainTabParamList = {
@@ -145,6 +147,7 @@ export default function Navigation() {
             <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen}/>
             <Stack.Screen name="Legal"                component={LegalScreen}/>
             <Stack.Screen name="Chat"                 component={ChatScreen}/>
+            <Stack.Screen name="SupportConnect"       component={SupportConnectScreen}/>
             {/* re-running assessment from MyPage */}
             <Stack.Screen name="Assessment"      component={AssessmentScreen}/>
             <Stack.Screen name="InitialRoutine"  component={InitialRoutineScreen}/>
