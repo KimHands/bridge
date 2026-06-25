@@ -15,7 +15,7 @@ import { useDiaryList } from '@/hooks/useDiaryQueries';
 import {
   Target, Trophy, ChartBar, Notepad,
   Bell, Moon, Lock, Globe,
-  Question, Envelope, Scroll, ShieldCheck, Megaphone,
+  Question, Envelope, Scroll, ShieldCheck, Megaphone, Lifebuoy,
 } from 'phosphor-react-native';
 
 const ICON_PROPS = { size: 18, color: palette.primary, weight: 'duotone' as const };
@@ -134,6 +134,7 @@ export default function MyPageScreen() {
           { icon: <Globe {...ICON_PROPS} />, label: '언어', value: '한국어', onPress: () => notImplemented('언어 설정') },
         ]}/>
         <Section title="고객 지원" items={[
+          { icon: <Lifebuoy {...ICON_PROPS} />, label: '전문가 상담·기관 안내', onPress: () => navigation.navigate('SupportConnect') },
           { icon: <Question {...ICON_PROPS} />, label: '자주 묻는 질문', onPress: () => notImplemented('자주 묻는 질문') },
           { icon: <Envelope {...ICON_PROPS} />, label: '문의하기', onPress: () => notImplemented('문의하기') },
           { icon: <Scroll {...ICON_PROPS} />, label: '이용약관', onPress: () => navigation.navigate('Legal', { kind: 'tos' }) },
