@@ -37,19 +37,18 @@ from app.api.v1 import reports as reports_router
 from app.api.v1 import routines as routines_router
 from app.api.v1 import users as users_router
 from app.core.database import AsyncSessionLocal
-from app.scheduler import scheduler
 from app.seeds.emotion_keywords import seed_emotion_keywords
 from app.seeds.routines import seed_routines
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # 스케줄러는 웹 워커가 아니라 전용 프로세스(app.run_scheduler)에서 돈다.
+    # --workers N 하에서 워커마다 기동돼 푸시가 N번 발송되는 것을 막기 위함(H2).
     async with AsyncSessionLocal() as db:
         await seed_emotion_keywords(db)
         await seed_routines(db)
-    scheduler.start()
     yield
-    scheduler.shutdown()
 
 
 # 운영에서는 API 스키마 정찰을 막기 위해 Swagger/OpenAPI 문서를 닫는다.

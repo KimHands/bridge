@@ -21,3 +21,17 @@ services:
         condition: service_healthy
     restart: unless-stopped
     command: sh /app/entrypoint.prod.sh
+
+  # 스케줄러 전용 단일 프로세스 — uvicorn --workers 2와 분리(H2).
+  # 웹 워커에서 scheduler.start()를 호출하지 않으므로 중복 발송이 발생하지 않는다.
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env.production
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    command: sh /app/entrypoint.scheduler.sh

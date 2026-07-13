@@ -42,5 +42,22 @@ services:
       - ./backend:/app
     command: sh /app/entrypoint.sh
 
+  # 스케줄러 전용 단일 프로세스 — 웹 워커와 분리(H2). api가 마이그레이션을 담당하고
+  # 스케줄러 잡은 cron 시점에만 DB를 건드리므로 db healthy만 대기하면 충분하다.
+  scheduler:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+    command: sh /app/entrypoint.scheduler.sh
+
 volumes:
   pgdata:
