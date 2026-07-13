@@ -4,14 +4,11 @@ import { View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
 import Navigation from '@/navigation/Navigation';
 import { useAuth } from '@/store/auth';
-
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
-});
+import { queryClient } from '@/lib/queryClient';
 
 export default function App() {
   const hydrate = useAuth(s => s.hydrate);

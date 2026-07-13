@@ -44,7 +44,13 @@ export function usePushNotifications(
   const lastTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthed) return;
+    // 로그아웃 시 재등록 가드 해제. NotificationBridge는 auth 전환에도 언마운트되지
+    // 않아 lastTokenRef가 유지되는데, 초기화하지 않으면 재로그인 때 동일 토큰이
+    // "이미 등록됨"으로 걸러져 재등록이 누락된다(로그아웃 시 서버는 토큰을 비활성화함).
+    if (!isAuthed) {
+      lastTokenRef.current = null;
+      return;
+    }
     let cancelled = false;
 
     (async () => {

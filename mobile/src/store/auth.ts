@@ -9,6 +9,7 @@ import {
   getStoredUser, setStoredUser, clearStoredUser,
 } from '@/lib/api';
 import { getExpoPushToken } from '@/lib/notifications';
+import { queryClient } from '@/lib/queryClient';
 
 export type User = {
   user_id: string;
@@ -112,6 +113,7 @@ export const useAuth = create<AuthState>((set) => ({
     await clearToken();
     await clearRefreshToken();
     await clearStoredUser();
+    queryClient.clear(); // 이전 사용자 캐시 제거 (같은 기기 재로그인 시 데이터 유출 방지)
     set({ user: null, token: null });
   },
 
@@ -126,11 +128,13 @@ export const useAuth = create<AuthState>((set) => ({
     await clearToken();
     await clearRefreshToken();
     await clearStoredUser();
+    queryClient.clear(); // 이전 사용자 캐시 제거
     set({ user: null, token: null });
   },
 }));
 
 // Wire api.ts 401-handler into the store
 (globalThis as any).__bridgeOnAuthExpired = () => {
+  queryClient.clear(); // 세션 만료 — 다음 로그인(다른 사용자 가능) 전 캐시 비움
   useAuth.setState({ user: null, token: null });
 };
