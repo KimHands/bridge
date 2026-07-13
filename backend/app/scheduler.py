@@ -12,6 +12,7 @@ from app.models.diary import DiaryEntry
 from app.models.mission import MissionPoint
 from app.models.routine import RoutineLog, UserRoutine
 from app.models.user import User
+from app.services.mission_scoring import compute_components
 
 scheduler = AsyncIOScheduler(timezone="UTC")
 
@@ -57,8 +58,7 @@ async def aggregate_weekly_missions() -> None:
             )
             diary_days = len(de_rows.scalars().all())
 
-            routine_score = round(routine_days / 7 * 70)
-            diary_score = round(diary_days / 7 * 30)
+            routine_score, diary_score = compute_components(routine_days, diary_days)
             total_score = routine_score + diary_score
 
             stmt = (
