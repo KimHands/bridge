@@ -1,6 +1,11 @@
 services:
   redis:
     image: redis:7-alpine
+    # 인증 필수(H4). REDIS_PASSWORD는 배포 셸/루트 .env에서 주입(미설정 시 기동 실패).
+    # REDIS_URL(.env.production)에도 동일 비밀번호를 embed해야 함.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?set REDIS_PASSWORD for redis auth}"]
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?set REDIS_PASSWORD for redis auth}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]

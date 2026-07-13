@@ -17,8 +17,11 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
+    # 인증 필수(H4). 호스트 포트 노출 제거 — api/scheduler는 compose 네트워크로만 접근.
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-bridge_redis_secret}"]
+    environment:
+      # redis-cli가 자동으로 읽어 헬스체크가 인증됨(-a 노출 없이).
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-bridge_redis_secret}
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
