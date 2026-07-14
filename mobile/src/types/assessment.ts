@@ -9,9 +9,6 @@ export type CauseCode =
   | 'physical'
   | 'unknown';
 
-/** PHQ-9 tier derived from phq9_level (1~4) — kept numeric to avoid medical label exposure */
-export type AssessmentTier = 1 | 2 | 3 | 4;
-
 export interface AssessmentRequest {
   phq9_answers: number[];
   primary_cause: CauseCode;
@@ -24,20 +21,28 @@ export interface AssignedRoutineItem {
   category: string;
 }
 
-/** Returned by POST /assessments — 원점수(phq9_score)는 서버가 보내지 않음(데이터 최소화) */
+/**
+ * Returned by POST /assessments.
+ * 데이터 최소화(M3): 임상 구간(phq9_level)·원점수는 서버가 보내지 않는다.
+ * 비임상 문구(result_short/result_note)와 전문가 연계 플래그만 받는다.
+ */
 export interface AssessmentResponse {
   assessment_id: string;
-  phq9_level: AssessmentTier;
   primary_cause: CauseCode;
   needs_professional_flag: boolean;
+  recommend_professional: boolean;
+  result_short: string;
+  result_note: string;
   assigned_routines: AssignedRoutineItem[];
 }
 
 /** Single item from GET /assessments history list */
 export interface AssessmentHistoryItem {
   assessment_id: string;
-  phq9_level: AssessmentTier;
   primary_cause: CauseCode;
   needs_professional_flag: boolean;
+  recommend_professional: boolean;
+  result_short: string;
+  result_note: string;
   taken_at: string;
 }

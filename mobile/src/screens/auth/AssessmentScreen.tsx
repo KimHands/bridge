@@ -6,7 +6,7 @@ import { palette, fontFamily } from '@/theme/tokens';
 import { PrimaryButton, Card } from '@/components/atoms';
 import { TopBar, DecorativeBlobs } from '@/components/BackHeader';
 import { assessments } from '@/lib/api';
-import type { CauseCode, AssessmentTier } from '@/types/assessment';
+import type { CauseCode } from '@/types/assessment';
 import { CauseIcon } from '@/lib/causeIcon';
 import { CRISIS_HOTLINES, HOSPITAL_MAP_QUERY } from '@/lib/crisis';
 import { Plant, Heart, Phone } from 'phosphor-react-native';
@@ -55,10 +55,6 @@ function getNote(total: number) {
   return RESULT_NOTES[3];
 }
 
-function getNoteByTier(tier: AssessmentTier) {
-  return RESULT_NOTES[tier - 1];
-}
-
 // 화면 단계: 0~8 = PHQ-9 문항, 9 = cause 선택, 10 = 결과
 export default function AssessmentScreen({ navigation, route }: Props) {
   const isViewMode = route.params?.mode === 'view';
@@ -67,12 +63,13 @@ export default function AssessmentScreen({ navigation, route }: Props) {
   const [cause, setCause] = useState<CauseCode | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [viewTier, setViewTier] = useState<AssessmentTier | null>(null);
+  // 백엔드가 내려주는 비임상 결과 문구(임상 구간 대신). 없으면 로컬 폴백 사용.
+  const [serverCopy, setServerCopy] = useState<{ short: string; note: string } | null>(null);
   const [viewLoading, setViewLoading] = useState(isViewMode);
   // PHQ-9 9번(자살사고) 양성 신호. 백엔드 needs_professional_flag를 소비해 위기 안내를 분기한다.
   const [needsProfessional, setNeedsProfessional] = useState(false);
-  // 제출 직후 결과의 PHQ 구간(1~4). 4구간(최중증)도 위기 안내를 분기한다.
-  const [resultTier, setResultTier] = useState<AssessmentTier | null>(null);
+  // 전문가 연계 안내(위기 카드) 노출 여부 — 백엔드 recommend_professional 소비.
+  const [recommendProfessional, setRecommendProfessional] = useState(false);
 
   // viewMode: 최신 자가평가 결과 조회 후 결과 화면 직진
   useEffect(() => {
@@ -102,11 +99,11 @@ export default function AssessmentScreen({ navigation, route }: Props) {
         }
 
         const latest = items[0];
-        if (typeof latest?.phq9_level !== 'number') {
+        if (!latest?.result_note) {
           throw new Error('Invalid assessment data');
         }
-        setViewTier(latest.phq9_level);
-        setResultTier(latest.phq9_level);
+        setServerCopy({ short: latest.result_short, note: latest.result_note });
+        setRecommendProfessional(latest.recommend_professional === true);
         setNeedsProfessional(latest.needs_professional_flag === true);
         setShowResult(true);
       } catch {
@@ -130,7 +127,8 @@ export default function AssessmentScreen({ navigation, route }: Props) {
   }, []);
 
   const total = answers.reduce<number>((a, b) => a + (b ?? 0), 0);
-  const note = isViewMode && viewTier !== null ? getNoteByTier(viewTier) : getNote(total);
+  // 서버가 준 비임상 문구를 우선 사용, 없으면(제출 실패 등) 로컬 폴백.
+  const note = serverCopy ?? getNote(total);
 
   if (viewLoading) {
     return (
@@ -156,13 +154,14 @@ export default function AssessmentScreen({ navigation, route }: Props) {
     setLoading(true);
     try {
       const res = await assessments.submit(answers.map(a => a ?? 0), selectedCause);
-      // 자살사고(9번) 양성 신호 + 최중증 구간(tier 4)을 결과 화면 위기 안내 분기에 사용.
+      // 위기 안내 분기는 백엔드 플래그를 소비(임상 구간 대신). 결과 문구도 백엔드 제공.
       setNeedsProfessional(res?.needs_professional_flag === true);
-      if (typeof res?.phq9_level === 'number') setResultTier(res.phq9_level);
+      setRecommendProfessional(res?.recommend_professional === true);
+      if (res?.result_note) setServerCopy({ short: res.result_short, note: res.result_note });
     } catch {
-      // 제출 실패 시에도 9번 응답이 양성이거나 총점이 최중증이면 안전하게 위기 안내를 노출(로컬 폴백).
+      // 제출 실패 시 로컬 폴백: 9번 양성이거나 총점이 최중증이면 안전하게 위기 안내를 노출.
       setNeedsProfessional((answers[8] ?? 0) >= 1);
-      if (total >= 20) setResultTier(4);
+      setRecommendProfessional((answers[8] ?? 0) >= 1 || total >= 20);
     }
     setLoading(false);
     setShowResult(true);
@@ -180,7 +179,7 @@ export default function AssessmentScreen({ navigation, route }: Props) {
           <Text style={s.resultShort}>{note.short}</Text>
         </View>
         <View style={{ paddingHorizontal: 24, gap: 14 }}>
-          {(needsProfessional || resultTier === 4) && <CrisisSupportCard />}
+          {(needsProfessional || recommendProfessional) && <CrisisSupportCard />}
           <Card>
             <Text style={s.noteLabel}>BRIDGE'S NOTE</Text>
             <Text style={s.noteBody}>{note.note}</Text>

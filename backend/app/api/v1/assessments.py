@@ -17,6 +17,7 @@ from app.schemas.assessment import (
     AssignedRoutineItem,
 )
 from app.schemas.auth import SuccessResponse
+from app.services.assessment_result import recommend_professional, result_copy
 from app.services.safety_metrics import assessment_crisis_events, record_safety_event
 
 router = APIRouter(prefix="/assessments", tags=["assessments"])
@@ -105,13 +106,17 @@ async def create_assessment(
         for r in routines
     ]
 
+    result_short, result_note = result_copy(phq_tier)
+
     return {
         "success": True,
         "data": AssessmentResponse(
             assessment_id=str(assessment.id),
-            phq9_level=phq_tier,
             primary_cause=body.primary_cause,
             needs_professional_flag=needs_professional_flag,
+            recommend_professional=recommend_professional(phq_tier, needs_professional_flag),
+            result_short=result_short,
+            result_note=result_note,
             assigned_routines=assigned,
         ),
         "message": "ok",
@@ -133,11 +138,15 @@ async def get_assessments(
     items = []
     for a in assessments:
         data = decrypt_json(a.encrypted_result, aad=str(a.user_id))
+        flag = data.get("flag", False)
+        result_short, result_note = result_copy(a.phq_tier)
         items.append(AssessmentHistoryItem(
             assessment_id=str(a.id),
-            phq9_level=a.phq_tier,
             primary_cause=data["primary_cause"],
-            needs_professional_flag=data.get("flag", False),
+            needs_professional_flag=flag,
+            recommend_professional=recommend_professional(a.phq_tier, flag),
+            result_short=result_short,
+            result_note=result_note,
             taken_at=a.created_at.isoformat(),
         ))
 

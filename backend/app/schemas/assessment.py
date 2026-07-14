@@ -41,19 +41,24 @@ class AssignedRoutineItem(BaseModel):
     category: str
 
 
-# 데이터 최소화: PHQ-9 원점수(phq9_score)는 응답에 싣지 않는다(CLAUDE.md 점수 비노출).
-# 정성 문구 매핑에 필요한 구간 식별자(phq9_level)만 전달한다.
+# 데이터 최소화(M3): PHQ-9 원점수(phq9_score)와 임상 구간(phq_tier)은 응답에 싣지
+# 않는다(CLAUDE.md 점수·구간 비노출). 클라이언트에는 비임상 문구(result_short/result_note)와
+# 전문가 연계 플래그(recommend_professional)만 전달한다.
 class AssessmentResponse(BaseModel):
     assessment_id: str
-    phq9_level: int
     primary_cause: str
     needs_professional_flag: bool
+    recommend_professional: bool
+    result_short: str
+    result_note: str
     assigned_routines: list[AssignedRoutineItem]
 
 
 class AssessmentHistoryItem(BaseModel):
     assessment_id: str
-    phq9_level: int
     primary_cause: str
     needs_professional_flag: bool = False
+    recommend_professional: bool = False
+    result_short: str
+    result_note: str
     taken_at: str
