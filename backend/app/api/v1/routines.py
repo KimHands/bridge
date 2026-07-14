@@ -215,7 +215,25 @@ async def complete_routine(
             RoutineLog.completed_date == today,
         )
     )
-    if log_result.scalar_one_or_none():
+    existing = log_result.scalar_one_or_none()
+
+    # completed=false → 완료 취소(오늘 로그 삭제, 멱등). 미션·리포트 집계에서 제외된다.
+    if not body.completed:
+        if existing:
+            await db.delete(existing)
+            await db.commit()
+        return {
+            "success": True,
+            "data": RoutineCompleteResponse(
+                user_routine_id=str(ur.id),
+                completed=False,
+                logged_at=now.isoformat(),
+            ),
+            "message": "ok",
+        }
+
+    # completed=true → 완료 처리(하루 1회, 유니크 제약).
+    if existing:
         raise HTTPException(
             status_code=409,
             detail={"code": "ROUTINE_ALREADY_COMPLETED_TODAY", "message": "오늘 이미 완료 처리된 루틴입니다"},
@@ -240,7 +258,7 @@ async def complete_routine(
         "success": True,
         "data": RoutineCompleteResponse(
             user_routine_id=str(ur.id),
-            completed=body.completed,
+            completed=True,
             logged_at=now.isoformat(),
         ),
         "message": "ok",
