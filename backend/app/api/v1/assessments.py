@@ -47,7 +47,7 @@ async def create_assessment(
         "score": phq9_score,
         "flag": needs_professional_flag,
         "primary_cause": body.primary_cause,
-    })
+    }, aad=str(current_user.id))
 
     assessment = Assessment(
         user_id=current_user.id,
@@ -132,7 +132,7 @@ async def get_assessments(
 
     items = []
     for a in assessments:
-        data = decrypt_json(a.encrypted_result)
+        data = decrypt_json(a.encrypted_result, aad=str(a.user_id))
         items.append(AssessmentHistoryItem(
             assessment_id=str(a.id),
             phq9_level=a.phq_tier,

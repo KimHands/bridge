@@ -62,7 +62,7 @@ async def get_chat_session(user_id: str) -> list[dict]:
     if not raw:
         return []
     try:
-        return decrypt_json(raw)["turns"]
+        return decrypt_json(raw, aad=str(user_id))["turns"]
     except Exception:
         logger.warning("chat session decrypt failed; treating as empty")
         return []
@@ -77,7 +77,7 @@ async def append_chat_turn(
     session.append({"role": "assistant", "content": assistant_msg})
     session = session[-(CHAT_MAX_TURNS * 2):]
     r = await get_redis()
-    await r.setex(_chat_session_key(user_id), ttl_seconds, encrypt_json({"turns": session}))
+    await r.setex(_chat_session_key(user_id), ttl_seconds, encrypt_json({"turns": session}, aad=str(user_id)))
     return session
 
 

@@ -35,7 +35,7 @@ def _build_extract_messages(session: list[dict]) -> list[dict]:
 
 async def _store_memory(db: AsyncSession, user_id, content: str) -> None:
     """특징 문자열을 암호화해 저장한다. user_id는 uuid.UUID."""
-    row = ChatMemory(user_id=user_id, encrypted_content=encrypt_json({"c": content}))
+    row = ChatMemory(user_id=user_id, encrypted_content=encrypt_json({"c": content}, aad=str(user_id)))
     db.add(row)
 
 
@@ -47,7 +47,7 @@ async def load_memories(db: AsyncSession, user_id) -> list[str]:
         .order_by(ChatMemory.created_at.desc(), ChatMemory.id.desc())
     )
     rows = result.scalars().all()
-    return [decrypt_json(r.encrypted_content)["c"] for r in rows]
+    return [decrypt_json(r.encrypted_content, aad=str(user_id))["c"] for r in rows]
 
 
 async def _enforce_limit(db: AsyncSession, user_id) -> None:

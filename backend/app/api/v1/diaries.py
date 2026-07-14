@@ -49,7 +49,7 @@ async def create_diary(
             detail={"code": "DIARY_ALREADY_EXISTS_TODAY", "message": "오늘 일기는 이미 작성되었습니다"},
         )
 
-    encrypted_memo = encrypt_json({"memo": body.memo}) if body.memo else None
+    encrypted_memo = encrypt_json({"memo": body.memo}, aad=str(current_user.id)) if body.memo else None
 
     diary = DiaryEntry(
         user_id=current_user.id,
@@ -170,7 +170,7 @@ async def list_diaries(
         memo_preview = None
         if e.encrypted_memo:
             try:
-                memo = decrypt_json(e.encrypted_memo).get("memo", "")
+                memo = decrypt_json(e.encrypted_memo, aad=str(e.user_id)).get("memo", "")
                 memo_preview = memo[:20] if memo else None
             except Exception:
                 memo_preview = None
@@ -232,7 +232,7 @@ async def get_diary(
 
     memo = None
     if diary.encrypted_memo:
-        memo = decrypt_json(diary.encrypted_memo).get("memo")
+        memo = decrypt_json(diary.encrypted_memo, aad=str(diary.user_id)).get("memo")
 
     return {
         "success": True,
@@ -278,7 +278,7 @@ async def update_diary(
     if body.mood_score is not None:
         diary.mood_score = body.mood_score
     if body.memo is not None:
-        diary.encrypted_memo = encrypt_json({"memo": body.memo})
+        diary.encrypted_memo = encrypt_json({"memo": body.memo}, aad=str(diary.user_id))
 
     if body.emotion_keywords is not None:
         await db.execute(delete(DiaryEmotionKeyword).where(DiaryEmotionKeyword.diary_id == diary.id))
