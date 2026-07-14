@@ -45,10 +45,8 @@ export default function ReportScreen() {
   const weekData = weekQ.data;
   const monthData = monthQ.data;
 
-  // 주간: mood_scores 배열(7개) → 차트 값 + 라벨
-  const weekChartValues: number[] = weekData
-    ? weekData.mood_scores.map(v => v ?? 0)
-    : [0, 0, 0, 0, 0, 0, 0];
+  // 주간: mood_scores(7개, 결측일은 null) → null 유지(0으로 뭉개면 차트 밖으로 찍힘 — M8)
+  const weekChartValues: (number | null)[] = weekData ? weekData.mood_scores : [];
   const weekLabels = DAY_LABELS;
 
   // 월간: mood_trend MoodPoint[] → 날짜 라벨 + 점수
@@ -59,8 +57,11 @@ export default function ReportScreen() {
     ? monthData.mood_trend.map(p => p.date.slice(8)) // "DD" 부분만
     : [];
 
-  const chartValues = period === 'week' ? weekChartValues : monthChartValues;
+  const chartValues: (number | null)[] = period === 'week' ? weekChartValues : monthChartValues;
   const chartLabels = period === 'week' ? weekLabels : monthLabels;
+  // 유효 데이터(비결측)가 하나라도 있어야 차트를 그린다. 주간은 항상 length 7이라
+  // length 기반 빈상태 판정이 안 되므로 값 존재 여부로 판정한다(M8).
+  const hasChartData = chartValues.some(v => v != null);
 
   const moodAverage = period === 'week'
     ? (weekData?.mood_average ?? null)
@@ -115,12 +116,12 @@ export default function ReportScreen() {
             </View>
             <View style={s.emojiBox}><ChartLineUp size={20} color={palette.mintDeep} weight="duotone" /></View>
           </View>
-          {chartValues.length > 0 && (
+          {hasChartData && (
             <View style={{ marginTop: 24 }}>
               <MoodLineChart values={chartValues} labels={chartLabels}/>
             </View>
           )}
-          {chartValues.length === 0 && (
+          {!hasChartData && (
             <Text style={{ marginTop: 16, fontSize: 13, color: palette.textCaption, textAlign: 'center' }}>
               아직 기록된 일기가 없어요.
             </Text>
