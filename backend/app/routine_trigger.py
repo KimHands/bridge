@@ -15,15 +15,20 @@ from app.models.routine import Routine, UserRoutine
 from app.services.notification import send_notification
 from app.services.trigger_metrics import (
     DECISION_BLOCKED_COOLDOWN,
+    DECISION_BLOCKED_MOOD,
     DECISION_BLOCKED_TIER4,
     DECISION_BLOCKED_WEEKLY_CAP,
+    DECISION_COLDSTART_BYPASS,
     DECISION_FIRED,
     DECISION_NO_CANDIDATE,
     DECISION_NO_ROUTINE_MATCH,
     record_trigger_decision,
 )
 from app.services.trigger_signal import (
+    BASELINE_WINDOW,
+    compute_mood_baseline,
     count_keyword_frequency,
+    passes_mood_gate,
     select_candidate_keywords,
 )
 
@@ -145,6 +150,23 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     triggered_keywords = select_candidate_keywords(keyword_freq)
     if not triggered_keywords:
         await record_trigger_decision(DECISION_NO_CANDIDATE)
+        return
+
+    # G2b mood 편차 — 현재 일기의 mood가 본인 기준선 대비 충분히 낮은지.
+    #      기준선은 현재 일기를 제외한 직전 최대 30건으로 산출한다(콜드스타트는 우회).
+    current_mood = diaries[-1].mood_score
+    prior_rows = await db.execute(
+        select(DiaryEntry.mood_score)
+        .where(DiaryEntry.user_id == user_id)
+        .order_by(DiaryEntry.created_at.desc())
+        .offset(1)
+        .limit(BASELINE_WINDOW)
+    )
+    baseline = compute_mood_baseline(list(prior_rows.scalars().all()))
+    if baseline is None:
+        await record_trigger_decision(DECISION_COLDSTART_BYPASS)
+    elif not passes_mood_gate(current_mood, baseline):
+        await record_trigger_decision(DECISION_BLOCKED_MOOD)
         return
 
     # ⑤ 기존 활성 루틴 id 집합
