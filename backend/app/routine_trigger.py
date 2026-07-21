@@ -13,6 +13,14 @@ from app.models.mission import TriggerLog
 from app.models.notification import DeviceToken, NotificationSetting
 from app.models.routine import Routine, UserRoutine
 from app.services.notification import send_notification
+from app.services.trigger_metrics import (
+    DECISION_BLOCKED_COOLDOWN,
+    DECISION_BLOCKED_TIER4,
+    DECISION_FIRED,
+    DECISION_NO_CANDIDATE,
+    DECISION_NO_ROUTINE_MATCH,
+    record_trigger_decision,
+)
 from app.services.trigger_signal import (
     count_keyword_frequency,
     select_candidate_keywords,
@@ -110,13 +118,7 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         for d in diaries
     ]
 
-    # ③ 후보 키워드 선정 — 빈도 임계 통과분을 빈도순 최대 2개
-    keyword_freq = count_keyword_frequency(diary_logs)
-    triggered_keywords = select_candidate_keywords(keyword_freq)
-    if not triggered_keywords:
-        return
-
-    # ④ 최신 PHQ 구간 조회 (없으면 기본값 2)
+    # ③ 최신 PHQ 구간 조회 (없으면 기본값 2) — G1 가용성 게이트
     assess_result = await db.execute(
         select(Assessment)
         .where(Assessment.user_id == user_id)
@@ -126,7 +128,7 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     latest = assess_result.scalar_one_or_none()
     phq_tier = latest.phq_tier if latest else 2
 
-    # ④-a 4구간(최중증)은 키워드 트리거 루틴 배정 영역이 아니라 전문가 연계 영역이다.
+    # ③-a 4구간(최중증)은 키워드 트리거 루틴 배정 영역이 아니라 전문가 연계 영역이다.
     #      (시드상 4구간 루틴은 '원인 무관 고정' 1개뿐이라 키워드 매칭이 구조적으로 0건)
     #      조용한 무동작 대신 명시적으로 분기·기록한다. 사용자 대면 전문가 안내는
     #      자가평가 결과 화면(needs_professional / tier 4 위기 안내)이 담당한다.
@@ -134,6 +136,14 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         logger.info(
             "trigger skipped for tier-4 user_id=%s (professional referral domain)", user_id
         )
+        await record_trigger_decision(DECISION_BLOCKED_TIER4)
+        return
+
+    # ④ 후보 키워드 선정 — 빈도 임계 통과분을 빈도순 최대 2개 (G2a)
+    keyword_freq = count_keyword_frequency(diary_logs)
+    triggered_keywords = select_candidate_keywords(keyword_freq)
+    if not triggered_keywords:
+        await record_trigger_decision(DECISION_NO_CANDIDATE)
         return
 
     # ⑤ 기존 활성 루틴 id 집합
@@ -143,10 +153,13 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     )
     active_ids = {row[0] for row in active_result.all()}
 
-    # ⑥ 쿨다운을 통과한 키워드만 선별
+    # ⑥ 쿨다운을 통과한 키워드만 선별 (G3)
     fresh_keywords = [
         k for k in triggered_keywords if not await _is_in_cooldown(db, user_id, k, now)
     ]
+    if not fresh_keywords:
+        await record_trigger_decision(DECISION_BLOCKED_COOLDOWN)
+        return
 
     any_assigned = False
     assigned_routine_ids: list = []
@@ -189,27 +202,31 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
             _assign_routine(db, user_id, routine, [keyword], now, active_ids, assigned_routine_ids)
             any_assigned = True
 
-    if any_assigned:
-        await db.commit()
+    if not any_assigned:
+        await record_trigger_decision(DECISION_NO_ROUTINE_MATCH)
+        return
 
-        # 시나리오 3: 트리거 발동 시 즉시 푸시 알림
-        setting_result = await db.execute(
-            select(NotificationSetting).where(NotificationSetting.user_id == user_id)
-        )
-        setting = setting_result.scalar_one_or_none()
-        if setting and setting.push_enabled:
-            token_result = await db.execute(
-                select(DeviceToken).where(
-                    and_(DeviceToken.user_id == user_id, DeviceToken.is_active.is_(True))
-                )
+    await db.commit()
+    await record_trigger_decision(DECISION_FIRED)
+
+    # 시나리오 3: 트리거 발동 시 즉시 푸시 알림
+    setting_result = await db.execute(
+        select(NotificationSetting).where(NotificationSetting.user_id == user_id)
+    )
+    setting = setting_result.scalar_one_or_none()
+    if setting and setting.push_enabled:
+        token_result = await db.execute(
+            select(DeviceToken).where(
+                and_(DeviceToken.user_id == user_id, DeviceToken.is_active.is_(True))
             )
-            tokens = token_result.scalars().all()
-            for assigned_routine_id in assigned_routine_ids:
-                await send_notification(
-                    db=db,
-                    user_id=user_id,
-                    tokens=list(tokens),
-                    notification_type="trigger",
-                    deep_link_type="trigger",
-                    extra_data={"routine_id": str(assigned_routine_id)},
-                )
+        )
+        tokens = token_result.scalars().all()
+        for assigned_routine_id in assigned_routine_ids:
+            await send_notification(
+                db=db,
+                user_id=user_id,
+                tokens=list(tokens),
+                notification_type="trigger",
+                deep_link_type="trigger",
+                extra_data={"routine_id": str(assigned_routine_id)},
+            )
