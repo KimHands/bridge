@@ -16,6 +16,7 @@ from app.services.usage_metrics import (
     assessment_tier_distribution,
     routine_completion_stats,
     trigger_activity_stats,
+    trigger_decision_stats,
 )
 
 _KST = ZoneInfo("Asia/Seoul")
@@ -35,6 +36,7 @@ async def _run(days: int) -> None:
         completion = await routine_completion_stats(db, start, end)
         trigger = await trigger_activity_stats(db, start, end)
         tiers = await assessment_tier_distribution(db, start, end)
+        decisions = await trigger_decision_stats(db, start, end)
 
     rate = completion["approx_completion_rate"]
     rate_str = f"{rate:.3f}" if rate is not None else "N/A (활성 루틴 없음)"
@@ -55,6 +57,13 @@ async def _run(days: int) -> None:
     print(f"  키워드별: {trigger['triggers_by_keyword'] or '(없음)'}")
     print("  일별 발동:")
     print(_fmt_daily(trigger["daily_triggers"]))
+
+    fire_rate = decisions["fire_rate"]
+    fire_rate_str = f"{fire_rate:.3f}" if fire_rate is not None else "N/A (결정 없음)"
+    print("\n[트리거 결정 분포] (무발동 포함·익명)")
+    print(f"  총 결정: {decisions['total']}")
+    print(f"  발동률: {fire_rate_str}")
+    print(f"  결과별: {decisions['by_outcome'] or '(없음)'}")
 
     print("\n[자가평가 tier 분포] (모집단 분포·익명, 개인 변화 아님)")
     print(f"  tier별: {tiers['by_tier']}")
