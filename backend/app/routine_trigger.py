@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, any_, select
+from sqlalchemy import and_, any_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -16,6 +16,7 @@ from app.services.notification import send_notification
 from app.services.trigger_metrics import (
     DECISION_BLOCKED_COOLDOWN,
     DECISION_BLOCKED_TIER4,
+    DECISION_BLOCKED_WEEKLY_CAP,
     DECISION_FIRED,
     DECISION_NO_CANDIDATE,
     DECISION_NO_ROUTINE_MATCH,
@@ -161,6 +162,24 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         await record_trigger_decision(DECISION_BLOCKED_COOLDOWN)
         return
 
+    # G4 주간 상한 — 최근 7일 롤링 트리거 배정 수를 상한으로 제한(습관화 억제)
+    window_start = now - timedelta(days=WEEKLY_WINDOW_DAYS)
+    recent_count = (
+        await db.execute(
+            select(func.count())
+            .select_from(UserRoutine)
+            .where(
+                UserRoutine.user_id == user_id,
+                UserRoutine.source == "trigger",
+                UserRoutine.assigned_at >= window_start,
+            )
+        )
+    ).scalar_one()
+    remaining = WEEKLY_ASSIGN_CAP - recent_count
+    if remaining <= 0:
+        await record_trigger_decision(DECISION_BLOCKED_WEEKLY_CAP)
+        return
+
     any_assigned = False
     assigned_routine_ids: list = []
 
@@ -187,6 +206,8 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     # ⑥-b 복합 루틴이 없으면(또는 단일 키워드) 키워드별 단일 루틴 개별 배정.
     if not composite_assigned:
         for keyword in fresh_keywords:
+            if len(assigned_routine_ids) >= remaining:
+                break
             routine_result = await db.execute(
                 select(Routine)
                 .where(
