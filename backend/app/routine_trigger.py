@@ -13,55 +13,17 @@ from app.models.mission import TriggerLog
 from app.models.notification import DeviceToken, NotificationSetting
 from app.models.routine import Routine, UserRoutine
 from app.services.notification import send_notification
+from app.services.trigger_signal import (
+    count_keyword_frequency,
+    select_candidate_keywords,
+)
 
 logger = logging.getLogger(__name__)
 
-TRIGGER_THRESHOLD = 3
 COOLDOWN_DAYS = 3
 LOOKBACK_DAYS = 7
-
-
-def _calculate_trigger_score(
-    diary_logs: list[dict],
-) -> tuple[dict[str, float], dict[str, int]]:
-    """
-    diary_logs: [{"mood_score": int, "emotion_keywords": [str]}]
-    Returns: (trigger_scores, keyword_freq)
-    """
-    if not diary_logs:
-        return {}, {}
-
-    keyword_freq: dict[str, int] = {}
-    mood_sum = 0
-
-    for log in diary_logs:
-        mood_sum += log["mood_score"]
-        for keyword in log["emotion_keywords"]:
-            keyword_freq[keyword] = keyword_freq.get(keyword, 0) + 1
-
-    mood_avg = mood_sum / len(diary_logs)
-    total_freq = sum(keyword_freq.values())
-
-    trigger_scores: dict[str, float] = {}
-    for keyword, freq in keyword_freq.items():
-        mood_component = (5 - mood_avg) / 5 * 0.3
-        keyword_component = (freq / total_freq) * 0.7
-        trigger_scores[keyword] = mood_component + keyword_component
-
-    return trigger_scores, keyword_freq
-
-
-def _evaluate_triggers(
-    trigger_scores: dict[str, float],
-    keyword_freq: dict[str, int],
-) -> list[str]:
-    """
-    TRIGGER_THRESHOLD 이상인 키워드를 점수 내림차순으로 최대 2개 반환.
-    """
-    triggered = [k for k, freq in keyword_freq.items() if freq >= TRIGGER_THRESHOLD]
-    if not triggered:
-        return []
-    return sorted(triggered, key=lambda k: trigger_scores.get(k, 0), reverse=True)[:2]
+WEEKLY_ASSIGN_CAP = 2      # 최근 7일 롤링 트리거 배정 상한
+WEEKLY_WINDOW_DAYS = 7
 
 
 async def _is_in_cooldown(
@@ -148,9 +110,9 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         for d in diaries
     ]
 
-    # ③ 트리거 점수 계산 + 발동 키워드 판정
-    trigger_scores, keyword_freq = _calculate_trigger_score(diary_logs)
-    triggered_keywords = _evaluate_triggers(trigger_scores, keyword_freq)
+    # ③ 후보 키워드 선정 — 빈도 임계 통과분을 빈도순 최대 2개
+    keyword_freq = count_keyword_frequency(diary_logs)
+    triggered_keywords = select_candidate_keywords(keyword_freq)
     if not triggered_keywords:
         return
 
