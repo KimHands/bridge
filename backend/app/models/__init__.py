@@ -8,6 +8,7 @@ from app.models.mission import MissionPoint, TriggerLog
 from app.models.notification import DeviceToken, NotificationSetting, NotificationLog
 from app.models.chat import ChatMemory
 from app.models.safety_metric import SafetyEventCounter
+from app.models.trigger_metric import TriggerDecisionCounter
 
 __all__ = [
     "Base",
@@ -27,4 +28,5 @@ __all__ = [
     "NotificationLog",
     "ChatMemory",
     "SafetyEventCounter",
+    "TriggerDecisionCounter",
 ]

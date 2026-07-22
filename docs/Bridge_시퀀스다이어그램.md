@@ -122,9 +122,9 @@
     │                │               │            │  일기 목록 반환 │
     │                │               │            │───────────────>│
     │                │               │            │                │
-    │                │               │            │ [트리거 점수 산출]
-    │                │               │            │ mood 30% + 키워드 70%
-    │                │               │            │ [3회 이상 + 쿨다운 체크]
+    │                │               │            │ [트리거 게이트 체인 판정]
+    │                │               │            │ G2a 키워드 3회+ / G2b mood 편차
+    │                │               │            │ G3 쿨다운 / G4 주간 상한 체크
     │                │               │            │                │
     │                │               │            │ UPDATE user_routines
     │                │               │            │<───────────────│
@@ -144,11 +144,12 @@
 
 **트리거 알고리즘 실행 조건**
 ```python
-# 7일 관찰, 3회 이상 등장 키워드가 있을 때
+# 7일 관찰, 3회 이상 등장 키워드가 있을 때 (G2a)
 triggered = [k for k, v in freq.items() if v >= 3]
 
-# 트리거 점수 = mood 30% + 키워드 빈도 70%
-score = (5 - mood_avg) / 5 * 0.3 + keyword_weight * 0.7
+# G2b: 현재 mood가 개인 기준선(본인 과거 평균 - L*표준편차) 이하일 때만 통과
+# 콜드스타트(관측 7건 미만)는 우회, 척도 최저치(mood=1)는 무조건 통과
+passes = current_mood <= baseline_mean - sensitivity_L * baseline_std
 
 # 쿨다운 3일 체크 (Redis)
 cooldown_until = trigger_log.triggered_at + timedelta(days=3)

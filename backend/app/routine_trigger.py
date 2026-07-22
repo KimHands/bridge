@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import and_, any_, select
+from sqlalchemy import and_, any_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import AsyncSessionLocal
@@ -13,55 +13,31 @@ from app.models.mission import TriggerLog
 from app.models.notification import DeviceToken, NotificationSetting
 from app.models.routine import Routine, UserRoutine
 from app.services.notification import send_notification
+from app.services.trigger_metrics import (
+    DECISION_BLOCKED_COOLDOWN,
+    DECISION_BLOCKED_MOOD,
+    DECISION_BLOCKED_TIER4,
+    DECISION_BLOCKED_WEEKLY_CAP,
+    DECISION_COLDSTART_BYPASS,
+    DECISION_FIRED,
+    DECISION_NO_CANDIDATE,
+    DECISION_NO_ROUTINE_MATCH,
+    record_trigger_decision,
+)
+from app.services.trigger_signal import (
+    BASELINE_WINDOW,
+    compute_mood_baseline,
+    count_keyword_frequency,
+    passes_mood_gate,
+    select_candidate_keywords,
+)
 
 logger = logging.getLogger(__name__)
 
-TRIGGER_THRESHOLD = 3
 COOLDOWN_DAYS = 3
 LOOKBACK_DAYS = 7
-
-
-def _calculate_trigger_score(
-    diary_logs: list[dict],
-) -> tuple[dict[str, float], dict[str, int]]:
-    """
-    diary_logs: [{"mood_score": int, "emotion_keywords": [str]}]
-    Returns: (trigger_scores, keyword_freq)
-    """
-    if not diary_logs:
-        return {}, {}
-
-    keyword_freq: dict[str, int] = {}
-    mood_sum = 0
-
-    for log in diary_logs:
-        mood_sum += log["mood_score"]
-        for keyword in log["emotion_keywords"]:
-            keyword_freq[keyword] = keyword_freq.get(keyword, 0) + 1
-
-    mood_avg = mood_sum / len(diary_logs)
-    total_freq = sum(keyword_freq.values())
-
-    trigger_scores: dict[str, float] = {}
-    for keyword, freq in keyword_freq.items():
-        mood_component = (5 - mood_avg) / 5 * 0.3
-        keyword_component = (freq / total_freq) * 0.7
-        trigger_scores[keyword] = mood_component + keyword_component
-
-    return trigger_scores, keyword_freq
-
-
-def _evaluate_triggers(
-    trigger_scores: dict[str, float],
-    keyword_freq: dict[str, int],
-) -> list[str]:
-    """
-    TRIGGER_THRESHOLD 이상인 키워드를 점수 내림차순으로 최대 2개 반환.
-    """
-    triggered = [k for k, freq in keyword_freq.items() if freq >= TRIGGER_THRESHOLD]
-    if not triggered:
-        return []
-    return sorted(triggered, key=lambda k: trigger_scores.get(k, 0), reverse=True)[:2]
+WEEKLY_ASSIGN_CAP = 2      # 최근 7일 롤링 트리거 배정 상한
+WEEKLY_WINDOW_DAYS = 7
 
 
 async def _is_in_cooldown(
@@ -129,6 +105,8 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         .order_by(DiaryEntry.created_at.asc())
     )
     diaries = diary_result.scalars().all()
+    # 결정 시점 이전 단계 — 유일 호출부가 일기 저장 직후 BackgroundTask라 구조적으로 도달 불가.
+    # (도달 가능한 새 호출 경로가 생기면 여기도 결정 기록 대상이 된다.)
     if not diaries:
         return
 
@@ -148,13 +126,7 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         for d in diaries
     ]
 
-    # ③ 트리거 점수 계산 + 발동 키워드 판정
-    trigger_scores, keyword_freq = _calculate_trigger_score(diary_logs)
-    triggered_keywords = _evaluate_triggers(trigger_scores, keyword_freq)
-    if not triggered_keywords:
-        return
-
-    # ④ 최신 PHQ 구간 조회 (없으면 기본값 2)
+    # ③ 최신 PHQ 구간 조회 (없으면 기본값 2) — G1 가용성 게이트
     assess_result = await db.execute(
         select(Assessment)
         .where(Assessment.user_id == user_id)
@@ -164,7 +136,7 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     latest = assess_result.scalar_one_or_none()
     phq_tier = latest.phq_tier if latest else 2
 
-    # ④-a 4구간(최중증)은 키워드 트리거 루틴 배정 영역이 아니라 전문가 연계 영역이다.
+    # ③-a 4구간(최중증)은 키워드 트리거 루틴 배정 영역이 아니라 전문가 연계 영역이다.
     #      (시드상 4구간 루틴은 '원인 무관 고정' 1개뿐이라 키워드 매칭이 구조적으로 0건)
     #      조용한 무동작 대신 명시적으로 분기·기록한다. 사용자 대면 전문가 안내는
     #      자가평가 결과 화면(needs_professional / tier 4 위기 안내)이 담당한다.
@@ -172,6 +144,31 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         logger.info(
             "trigger skipped for tier-4 user_id=%s (professional referral domain)", user_id
         )
+        await record_trigger_decision(DECISION_BLOCKED_TIER4)
+        return
+
+    # ④ 후보 키워드 선정 — 빈도 임계 통과분을 빈도순 최대 2개 (G2a)
+    keyword_freq = count_keyword_frequency(diary_logs)
+    triggered_keywords = select_candidate_keywords(keyword_freq)
+    if not triggered_keywords:
+        await record_trigger_decision(DECISION_NO_CANDIDATE)
+        return
+
+    # G2b mood 편차 — 현재 일기의 mood가 본인 기준선 대비 충분히 낮은지.
+    #      기준선은 현재 일기를 제외한 직전 최대 30건으로 산출한다(콜드스타트는 우회).
+    current_mood = diaries[-1].mood_score
+    prior_rows = await db.execute(
+        select(DiaryEntry.mood_score)
+        .where(DiaryEntry.user_id == user_id)
+        .order_by(DiaryEntry.created_at.desc(), DiaryEntry.id.desc())
+        .offset(1)
+        .limit(BASELINE_WINDOW)
+    )
+    baseline = compute_mood_baseline(list(prior_rows.scalars().all()))
+    if baseline is None:
+        await record_trigger_decision(DECISION_COLDSTART_BYPASS)
+    elif not passes_mood_gate(current_mood, baseline):
+        await record_trigger_decision(DECISION_BLOCKED_MOOD)
         return
 
     # ⑤ 기존 활성 루틴 id 집합
@@ -181,10 +178,31 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     )
     active_ids = {row[0] for row in active_result.all()}
 
-    # ⑥ 쿨다운을 통과한 키워드만 선별
+    # ⑥ 쿨다운을 통과한 키워드만 선별 (G3)
     fresh_keywords = [
         k for k in triggered_keywords if not await _is_in_cooldown(db, user_id, k, now)
     ]
+    if not fresh_keywords:
+        await record_trigger_decision(DECISION_BLOCKED_COOLDOWN)
+        return
+
+    # ⑦ 주간 상한(G4) — 최근 7일 롤링 트리거 배정 수를 상한으로 제한(습관화 억제)
+    window_start = now - timedelta(days=WEEKLY_WINDOW_DAYS)
+    recent_count = (
+        await db.execute(
+            select(func.count())
+            .select_from(UserRoutine)
+            .where(
+                UserRoutine.user_id == user_id,
+                UserRoutine.source == "trigger",
+                UserRoutine.assigned_at >= window_start,
+            )
+        )
+    ).scalar_one()
+    remaining = WEEKLY_ASSIGN_CAP - recent_count
+    if remaining <= 0:
+        await record_trigger_decision(DECISION_BLOCKED_WEEKLY_CAP)
+        return
 
     any_assigned = False
     assigned_routine_ids: list = []
@@ -212,6 +230,8 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     # ⑥-b 복합 루틴이 없으면(또는 단일 키워드) 키워드별 단일 루틴 개별 배정.
     if not composite_assigned:
         for keyword in fresh_keywords:
+            if len(assigned_routine_ids) >= remaining:
+                break
             routine_result = await db.execute(
                 select(Routine)
                 .where(
@@ -227,27 +247,31 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
             _assign_routine(db, user_id, routine, [keyword], now, active_ids, assigned_routine_ids)
             any_assigned = True
 
-    if any_assigned:
-        await db.commit()
+    if not any_assigned:
+        await record_trigger_decision(DECISION_NO_ROUTINE_MATCH)
+        return
 
-        # 시나리오 3: 트리거 발동 시 즉시 푸시 알림
-        setting_result = await db.execute(
-            select(NotificationSetting).where(NotificationSetting.user_id == user_id)
-        )
-        setting = setting_result.scalar_one_or_none()
-        if setting and setting.push_enabled:
-            token_result = await db.execute(
-                select(DeviceToken).where(
-                    and_(DeviceToken.user_id == user_id, DeviceToken.is_active.is_(True))
-                )
+    await db.commit()
+    await record_trigger_decision(DECISION_FIRED)
+
+    # 시나리오 3: 트리거 발동 시 즉시 푸시 알림
+    setting_result = await db.execute(
+        select(NotificationSetting).where(NotificationSetting.user_id == user_id)
+    )
+    setting = setting_result.scalar_one_or_none()
+    if setting and setting.push_enabled:
+        token_result = await db.execute(
+            select(DeviceToken).where(
+                and_(DeviceToken.user_id == user_id, DeviceToken.is_active.is_(True))
             )
-            tokens = token_result.scalars().all()
-            for assigned_routine_id in assigned_routine_ids:
-                await send_notification(
-                    db=db,
-                    user_id=user_id,
-                    tokens=list(tokens),
-                    notification_type="trigger",
-                    deep_link_type="trigger",
-                    extra_data={"routine_id": str(assigned_routine_id)},
-                )
+        )
+        tokens = token_result.scalars().all()
+        for assigned_routine_id in assigned_routine_ids:
+            await send_notification(
+                db=db,
+                user_id=user_id,
+                tokens=list(tokens),
+                notification_type="trigger",
+                deep_link_type="trigger",
+                extra_data={"routine_id": str(assigned_routine_id)},
+            )

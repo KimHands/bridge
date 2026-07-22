@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.assessment import Assessment
 from app.models.mission import TriggerLog
 from app.models.routine import RoutineLog, UserRoutine
+from app.models.trigger_metric import TriggerDecisionCounter
 
 _KST = ZoneInfo("Asia/Seoul")
 
@@ -129,4 +130,39 @@ async def assessment_tier_distribution(db: AsyncSession, start: date, end: date)
             d: dict(sorted(daily_by_tier[d].items())) for d in sorted(daily_by_tier)
         },
         "total": sum(by_tier.values()),
+    }
+
+
+async def trigger_decision_stats(db: AsyncSession, start: date, end: date) -> dict:
+    """트리거 결정 분포 — 발동/무발동 및 차단 게이트별 집계(익명 카운터).
+
+    무발동은 기존 테이블에서 유도할 수 없어 별도 카운터를 읽는다.
+    """
+    rows = (
+        await db.execute(
+            select(
+                TriggerDecisionCounter.outcome,
+                TriggerDecisionCounter.day_bucket,
+                TriggerDecisionCounter.count,
+            )
+        )
+    ).all()
+
+    by_outcome: Counter[str] = Counter()
+    for outcome, day_bucket, count in rows:
+        if _in_range(day_bucket, start, end):
+            by_outcome[outcome] += count
+
+    # coldstart_bypass는 종료 결정이 아니라 비종료 관측 마커다(한 실행이 이 마커 + 별도의
+    # 종료 결정을 각각 남긴다). 발동률 분모·총 결정 수에 섞이면 왜곡되므로 종료 결정 집합에서
+    # 분리해 별도로 보고한다.
+    coldstart = by_outcome.pop("coldstart_bypass", 0)
+    total = sum(by_outcome.values())
+    fired = by_outcome.get("fired", 0)
+    return {
+        "range": _range_meta(start, end),
+        "by_outcome": dict(by_outcome.most_common()),
+        "total": total,
+        "fire_rate": (fired / total) if total else None,
+        "coldstart_bypass_count": coldstart,
     }
