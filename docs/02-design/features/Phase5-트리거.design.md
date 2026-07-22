@@ -2,7 +2,9 @@
 
 > 작성일: 2026-04-13
 > Phase: 5 / 8
-> 상태: Design
+> 상태: Design (⚠️ **일부 대체됨 2026-07-21** — 점수 계산부 `_calculate_trigger_score`의 mood 가중합은
+> no-op(R1)으로 폐기되고 게이트 체인 설계로 대체됨: `docs/02-design/2026-07-21-트리거-재설계.design.md`.
+> 본 문서는 Phase 5 시점 기록으로 보존한다.)
 > 참조: `docs/01-plan/features/Phase5-트리거.plan.md`
 
 ---

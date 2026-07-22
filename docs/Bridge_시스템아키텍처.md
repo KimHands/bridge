@@ -142,6 +142,10 @@
 
 **알고리즘 핵심 코드**
 
+> ⚠️ **[대체됨 2026-07-21]** 아래 가중합(mood 30% + 키워드 70%)은 mood 항이 상수라 발동·순위에
+> 영향이 없는 no-op이었다(R1). 게이트 체인(G1~G5) 기반 신규 설계로 대체됨 —
+> `docs/02-design/2026-07-21-트리거-재설계.design.md` 참조. 아래는 이력 보존용 원안이다.
+
 ```python
 def calculate_trigger_score(diary_logs: list, days: int = 7) -> dict:
     recent_logs = diary_logs[-days:]
