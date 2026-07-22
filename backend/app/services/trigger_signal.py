@@ -33,6 +33,7 @@ MIN_BASELINE_OBS = 7      # mood 기준선 산출 최소 관측 수
 BASELINE_WINDOW = 30      # 기준선 표본 상한
 MIN_MOOD_STDEV = 0.5      # 표준편차 하한 — 1~5 정수 척도에서 과민 방지
 MOOD_SENSITIVITY_L = 1.0  # 민감도 노브 — 근거로 도출된 값이 아니며 M2 지표로 조정
+MOOD_SCALE_MIN = 1        # mood_score 척도 하한 — 척도 최저치는 baseline과 무관하게 발동 허용
 
 
 def compute_mood_baseline(prior_moods: list[int]) -> tuple[float, float] | None:
@@ -44,7 +45,7 @@ def compute_mood_baseline(prior_moods: list[int]) -> tuple[float, float] | None:
     if len(prior_moods) < MIN_BASELINE_OBS:
         return None
     sample = prior_moods[:BASELINE_WINDOW]
-    return mean(sample), max(stdev(sample), MIN_MOOD_STDEV)
+    return float(mean(sample)), max(float(stdev(sample)), MIN_MOOD_STDEV)
 
 
 def passes_mood_gate(
@@ -52,8 +53,15 @@ def passes_mood_gate(
     baseline: tuple[float, float] | None,
     sensitivity: float = MOOD_SENSITIVITY_L,
 ) -> bool:
-    """현재 mood가 개인 기준선 대비 충분히 낮으면 True. 콜드스타트(None)는 우회."""
+    """현재 mood가 개인 기준선 대비 충분히 낮으면 True. 콜드스타트(None)는 우회.
+
+    척도 최저치(MOOD_SCALE_MIN)는 개인 기준선과 무관하게 명백한 저기분 신호로 보고 통과시킨다.
+    이 예외가 없으면 항상 최저치만 기록하는 사용자는 baseline 평균도 최저치가 되어
+    'mean - L*std' 조건을 영구히 만족할 수 없어 구조적으로 배제된다.
+    """
     if baseline is None:
+        return True
+    if current_mood <= MOOD_SCALE_MIN:
         return True
     baseline_mean, baseline_std = baseline
     return current_mood <= baseline_mean - sensitivity * baseline_std

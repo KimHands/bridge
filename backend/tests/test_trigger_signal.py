@@ -77,3 +77,11 @@ def test_same_keyword_frequency_different_mood_yields_different_decision():
     baseline = (4.0, 1.0)
     assert passes_mood_gate(4, baseline) is False   # 평소와 비슷 → 무발동
     assert passes_mood_gate(2, baseline) is True    # 평소보다 뚜렷이 낮음 → 발동
+
+
+def test_scale_floor_mood_always_passes():
+    # 척도 최저치(1)는 baseline이 아무리 낮아도 통과 — 상시 최저 기록자 배제 방지(F3).
+    from app.services.trigger_signal import MOOD_SCALE_MIN
+
+    assert passes_mood_gate(MOOD_SCALE_MIN, (1.0, 0.5)) is True   # 상시 1점 사용자 → 발동 가능
+    assert passes_mood_gate(3, (3.0, 0.5)) is False               # 상시 3점(중립) 사용자는 계속 게이트

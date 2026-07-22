@@ -13,10 +13,12 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from app.models.assessment import Assessment
 from app.models.mission import TriggerLog
 from app.models.routine import RoutineLog, UserRoutine
+from app.models.trigger_metric import TriggerDecisionCounter
 from app.services.usage_metrics import (
     assessment_tier_distribution,
     routine_completion_stats,
     trigger_activity_stats,
+    trigger_decision_stats,
 )
 
 _UTC = timezone.utc
@@ -26,7 +28,7 @@ _UTC = timezone.utc
 async def db():
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
-        for model in (UserRoutine, RoutineLog, Assessment, TriggerLog):
+        for model in (UserRoutine, RoutineLog, Assessment, TriggerLog, TriggerDecisionCounter):
             await conn.run_sync(model.__table__.create)
     factory = async_sessionmaker(engine, expire_on_commit=False)
     async with factory() as session:
@@ -137,3 +139,19 @@ async def test_empty_range_returns_zeros(db):
     assert res["total"] == 0
     assert res["by_tier"] == {1: 0, 2: 0, 3: 0, 4: 0}
     assert res["daily_by_tier"] == {}
+
+
+@pytest.mark.asyncio
+async def test_trigger_decision_stats_excludes_coldstart_bypass_from_total(db):
+    # coldstart_bypass는 종료 결정이 아닌 비종료 마커라 total·fire_rate 분모에서 빠지고
+    # 별도 카운트로만 보고되어야 한다(F2/F4).
+    db.add(TriggerDecisionCounter(outcome="fired", day_bucket=date(2026, 6, 10), count=3))
+    db.add(TriggerDecisionCounter(outcome="no_candidate", day_bucket=date(2026, 6, 11), count=2))
+    db.add(TriggerDecisionCounter(outcome="coldstart_bypass", day_bucket=date(2026, 6, 12), count=5))
+    await db.commit()
+
+    res = await trigger_decision_stats(db, date(2026, 6, 1), date(2026, 6, 30))
+    assert res["total"] == 5
+    assert res["fire_rate"] == 3 / 5
+    assert res["coldstart_bypass_count"] == 5
+    assert "coldstart_bypass" not in res["by_outcome"]

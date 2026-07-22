@@ -105,6 +105,8 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         .order_by(DiaryEntry.created_at.asc())
     )
     diaries = diary_result.scalars().all()
+    # 결정 시점 이전 단계 — 유일 호출부가 일기 저장 직후 BackgroundTask라 구조적으로 도달 불가.
+    # (도달 가능한 새 호출 경로가 생기면 여기도 결정 기록 대상이 된다.)
     if not diaries:
         return
 
@@ -158,7 +160,7 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     prior_rows = await db.execute(
         select(DiaryEntry.mood_score)
         .where(DiaryEntry.user_id == user_id)
-        .order_by(DiaryEntry.created_at.desc())
+        .order_by(DiaryEntry.created_at.desc(), DiaryEntry.id.desc())
         .offset(1)
         .limit(BASELINE_WINDOW)
     )
@@ -184,7 +186,7 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         await record_trigger_decision(DECISION_BLOCKED_COOLDOWN)
         return
 
-    # G4 주간 상한 — 최근 7일 롤링 트리거 배정 수를 상한으로 제한(습관화 억제)
+    # ⑦ 주간 상한(G4) — 최근 7일 롤링 트리거 배정 수를 상한으로 제한(습관화 억제)
     window_start = now - timedelta(days=WEEKLY_WINDOW_DAYS)
     recent_count = (
         await db.execute(

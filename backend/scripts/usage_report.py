@@ -64,6 +64,7 @@ async def _run(days: int) -> None:
     print(f"  총 결정: {decisions['total']}")
     print(f"  발동률: {fire_rate_str}")
     print(f"  결과별: {decisions['by_outcome'] or '(없음)'}")
+    print(f"  콜드스타트 우회(비종료 마커): {decisions['coldstart_bypass_count']}")
 
     print("\n[자가평가 tier 분포] (모집단 분포·익명, 개인 변화 아님)")
     print(f"  tier별: {tiers['by_tier']}")

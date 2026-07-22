@@ -153,6 +153,10 @@ async def trigger_decision_stats(db: AsyncSession, start: date, end: date) -> di
         if _in_range(day_bucket, start, end):
             by_outcome[outcome] += count
 
+    # coldstart_bypass는 종료 결정이 아니라 비종료 관측 마커다(한 실행이 이 마커 + 별도의
+    # 종료 결정을 각각 남긴다). 발동률 분모·총 결정 수에 섞이면 왜곡되므로 종료 결정 집합에서
+    # 분리해 별도로 보고한다.
+    coldstart = by_outcome.pop("coldstart_bypass", 0)
     total = sum(by_outcome.values())
     fired = by_outcome.get("fired", 0)
     return {
@@ -160,4 +164,5 @@ async def trigger_decision_stats(db: AsyncSession, start: date, end: date) -> di
         "by_outcome": dict(by_outcome.most_common()),
         "total": total,
         "fire_rate": (fired / total) if total else None,
+        "coldstart_bypass_count": coldstart,
     }

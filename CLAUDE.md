@@ -136,31 +136,19 @@ Base URL: `https://api.bridge.app/v1`
 
 ## 트리거 알고리즘 핵심 로직
 
-```python
-# 파일: routine_trigger.py
-# 발동 조건: 최근 7일 중 동일 감정 키워드 3회 이상
-# 가중치: mood_score 30% + 키워드 빈도 70%
-# 쿨다운: 3일
-# 충돌 처리: 복합 루틴 추천 (상위 2개 키워드 커버)
+파일: `backend/app/routine_trigger.py` · 설계: `docs/02-design/2026-07-21-트리거-재설계.design.md`
 
-def calculate_trigger_score(diary_logs, days=7):
-    recent_logs = diary_logs[-days:]
-    keyword_freq = {}
-    mood_avg = sum(l["mood_score"] for l in recent_logs) / len(recent_logs)
+일기 저장 직후 1일 1회, 명시적 게이트 체인으로 판정한다(무발동이 기본값):
+- G1 가용성: PHQ 4구간은 전문가 연계 영역이라 제외
+- G2a 후보: 최근 7일 내 동일 감정 키워드 3회 이상, 빈도순 상위 2개
+- G2b mood: 현재 일기 mood가 개인 기준선(본인 과거 평균 − L×표준편차) 이하일 때만 통과.
+  콜드스타트(기록 7건 미만)는 우회, 척도 최저치(1)는 무조건 통과. 임상 임계치·집단 기준 미사용.
+- G3 쿨다운: 키워드별 3일
+- G4 주간 상한: 최근 7일 롤링 트리거 배정 최대 2건
+- G5 배정 또는 무발동
 
-    for log in recent_logs:
-        for keyword in log["emotion_keywords"]:
-            keyword_freq[keyword] = keyword_freq.get(keyword, 0) + 1
-
-    total_freq = sum(keyword_freq.values())
-    trigger_scores = {}
-    for keyword, freq in keyword_freq.items():
-        mood_component = (5 - mood_avg) / 5 * 0.3
-        keyword_component = (freq / total_freq) * 0.7
-        trigger_scores[keyword] = mood_component + keyword_component
-
-    return trigger_scores
-```
+> 과거 "mood 30% + 키워드 70%" 가중합은 mood 항이 모든 키워드에 동일 상수라 발동·순위에
+> 영향이 없는 no-op이었다(R1). 위 게이트 체인으로 대체됨. 결정 분포는 익명 카운터로 계측한다.
 
 ---
 
