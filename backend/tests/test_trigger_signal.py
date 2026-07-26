@@ -3,9 +3,24 @@ from app.services.trigger_signal import (
     TRIGGER_THRESHOLD,
     compute_mood_baseline,
     count_keyword_frequency,
+    is_minimal_task_track,
     passes_mood_gate,
     select_candidate_keywords,
 )
+
+
+def test_minimal_track_when_all_keywords_low_energy():
+    assert is_minimal_task_track(["무기력한"]) is True
+    assert is_minimal_task_track(["우울한", "무기력한"]) is True
+
+
+def test_normal_track_when_any_keyword_not_low_energy():
+    assert is_minimal_task_track(["무기력한", "짜증나는"]) is False
+    assert is_minimal_task_track(["불안한"]) is False
+
+
+def test_minimal_track_empty_keywords_is_false():
+    assert is_minimal_task_track([]) is False
 
 
 def test_empty_logs_yield_empty_frequency():

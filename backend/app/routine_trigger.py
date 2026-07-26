@@ -28,6 +28,7 @@ from app.services.trigger_signal import (
     BASELINE_WINDOW,
     compute_mood_baseline,
     count_keyword_frequency,
+    is_minimal_task_track,
     passes_mood_gate,
     select_candidate_keywords,
 )
@@ -207,10 +208,31 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
     any_assigned = False
     assigned_routine_ids: list = []
 
+    # ⑥-0 최소 과제 트랙(B4): 발동 키워드가 모두 저에너지(무기력·우울)이면
+    #      부담 낮은 루틴(effort_level=1) 1개만 배정한다. 키워드 정확 매칭은 요구하지 않는다
+    #      (무기력한 사용자에겐 '뭐라도 작게'가 목적). 최소 루틴이 없으면 일반 로직으로 폴백.
+    if is_minimal_task_track(fresh_keywords):
+        minimal_result = await db.execute(
+            select(Routine)
+            .where(
+                Routine.phq_tier_min <= phq_tier,
+                Routine.phq_tier_max >= phq_tier,
+                Routine.effort_level == 1,
+            )
+            .limit(5)
+        )
+        for minimal_routine in minimal_result.scalars().all():
+            if minimal_routine.id in active_ids:
+                continue
+            _assign_routine(
+                db, user_id, minimal_routine, fresh_keywords, now, active_ids, assigned_routine_ids
+            )
+            any_assigned = True
+            break
+
     # ⑥-a 충돌 처리(명세 C-3): 상위 2개 키워드가 동시 발동하면
     #      두 키워드를 모두 커버하는 복합 루틴을 우선 추천.
-    composite_assigned = False
-    if len(fresh_keywords) >= 2:
+    if not any_assigned and len(fresh_keywords) >= 2:
         top_two = fresh_keywords[:2]
         composite_result = await db.execute(
             select(Routine)
@@ -225,10 +247,9 @@ async def _execute_trigger(user_id: uuid.UUID, db: AsyncSession) -> None:
         if composite and composite.id not in active_ids:
             _assign_routine(db, user_id, composite, top_two, now, active_ids, assigned_routine_ids)
             any_assigned = True
-            composite_assigned = True
 
     # ⑥-b 복합 루틴이 없으면(또는 단일 키워드) 키워드별 단일 루틴 개별 배정.
-    if not composite_assigned:
+    if not any_assigned:
         for keyword in fresh_keywords:
             if len(assigned_routine_ids) >= remaining:
                 break

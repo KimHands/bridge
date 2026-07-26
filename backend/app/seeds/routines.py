@@ -139,10 +139,34 @@ ROUTINE_SEEDS = [
 ]
 
 
+# effort_level=1(최소 부담) 루틴 title — 저에너지(무기력·우울) 트랙 전용 (B4).
+# 활성화 에너지가 거의 없는 1~2분 과제(물·호흡·한 줄 기록·음악)로 한정한다.
+MINIMAL_EFFORT_TITLES = frozenset(
+    {
+        "오늘 잘한 일 1가지 적기",
+        "물 2L 마시기",
+        "취침 전 4-7-8 호흡 5분",
+        "오늘 할 일 1가지만 적기",
+        "5분 마음 챙김 호흡",
+        "오늘 할 수 있는 일 1가지 적기",
+        "5분 호흡 명상",
+        "물 충분히 마시기",
+        "2분 복식호흡",
+        "감정 일기 한 줄 작성",
+        "물 한 잔 마시기",
+        "좋아하는 음악 한 곡 듣기",
+    }
+)
+
+
+def _effort_for(title: str) -> int:
+    return 1 if title in MINIMAL_EFFORT_TITLES else 2
+
+
 async def seed_routines(db: AsyncSession) -> None:
     """
     멱등 시드: title + phq_tier_min + phq_tier_max 조합으로 식별.
-    재실행 시 description, target_keywords 를 시드 파일 기준으로 갱신.
+    재실행 시 description, target_keywords, effort_level 을 시드 파일 기준으로 갱신.
     (ID 18, 19처럼 동일 title이 phq_tier로 구분되는 경우도 안전하게 처리)
     """
     changed = False
@@ -155,17 +179,20 @@ async def seed_routines(db: AsyncSession) -> None:
             )
         )
         existing = result.scalar_one_or_none()
+        effort = _effort_for(data["title"])
 
         if existing:
             if (
                 existing.target_keywords != data["target_keywords"]
                 or existing.description != data["description"]
+                or existing.effort_level != effort
             ):
                 existing.target_keywords = data["target_keywords"]
                 existing.description = data["description"]
+                existing.effort_level = effort
                 changed = True
         else:
-            db.add(Routine(**data))
+            db.add(Routine(**data, effort_level=effort))
             changed = True
 
     if changed:
