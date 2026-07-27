@@ -41,3 +41,14 @@ async def test_concurrent_requests_counted_atomically(r):
     import asyncio
     await asyncio.gather(*[rl.check_and_count(r, "u4") for _ in range(10)])
     assert int(await r.get("rl:req:u4:min")) == 10
+
+
+@pytest.mark.asyncio
+async def test_cooldown_race_exactly_one_allowed(r):
+    """콜드 상태 동일 유저에 동시 요청 폭주 → allow는 정확히 1건이어야 함(TOCTOU 재현)."""
+    import asyncio
+    results = await asyncio.gather(*[rl.check_and_count(r, "u5") for _ in range(20)])
+    allowed = [s for s in results if s.allowed_new is True]
+    cooldown_blocked = [s for s in results if s.reason == "cooldown"]
+    assert len(allowed) == 1
+    assert len(cooldown_blocked) == 19
