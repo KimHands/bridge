@@ -21,6 +21,14 @@ DECISION_BLOCKED_WEEKLY_CAP = "blocked_weekly_cap"
 DECISION_NO_ROUTINE_MATCH = "no_routine_match"
 DECISION_COLDSTART_BYPASS = "coldstart_bypass"
 
+# 사용자 요청 경로(on-demand, POST /routines/request) 결정 — 동일 테이블 재사용
+REQUEST_FIRED = "request_fired"
+REQUEST_NUDGED = "request_nudged"
+REQUEST_ESCALATION_OFFERED = "request_escalation_offered"
+REQUEST_COOLDOWN = "request_cooldown"
+REQUEST_NO_ROUTINE = "request_no_routine"
+REQUEST_ABUSE = "request_abuse"
+
 
 def _build_upsert(dialect_name: str, outcome: str, day: date):
     if dialect_name == "sqlite":
