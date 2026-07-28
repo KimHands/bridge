@@ -61,7 +61,9 @@ async def _create_anonymous_user() -> tuple[str, str]:
     device_secret = f"dev-{uuid.uuid4()}"
     async with httpx.AsyncClient(base_url=BASE_URL, timeout=10.0) as client:
         resp = await client.post(
-            "/v1/auth/anonymous", json={"device_secret": device_secret}
+            "/v1/auth/anonymous",
+            json={"device_secret": device_secret},
+            headers={"X-Forwarded-For": device_secret},  # 생성 레이트리밋 버킷 격리
         )
     assert resp.status_code == 201
     data = resp.json()["data"]
