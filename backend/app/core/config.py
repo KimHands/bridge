@@ -37,5 +37,8 @@ class Settings(BaseSettings):
     chat_session_ttl: int = 3600
     chat_memory_max: int = 20
 
+    # 이메일 발송 백엔드 — 현재는 "console"(로그 출력)만 구현. 운영 전환 시 "smtp" 추가 예정.
+    email_backend: str = "console"
+
 
 settings = Settings()
