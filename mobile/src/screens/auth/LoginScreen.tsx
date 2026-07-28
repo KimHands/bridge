@@ -20,6 +20,7 @@ export default function LoginScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const login = useAuth((s) => s.login);
+  const currentUser = useAuth((s) => s.user);
 
   const submit = async () => {
     setError(null);
@@ -27,7 +28,19 @@ export default function LoginScreen({ navigation }: Props) {
     if (pw.length < 8) { setError('비밀번호는 8자 이상이어야 합니다'); return; }
     setLoading(true);
     try {
-      await login(email, pw);
+      // Navigation.tsx의 navKey 계산과 동일한 로직으로 로그인 전 navKey를 미리 구해둔다.
+      const prevNavKey = !currentUser ? 'auth' : currentUser.requires_assessment ? 'assessment' : 'main';
+      const loggedInUser = await login(email, pw);
+      const nextNavKey = loggedInUser.requires_assessment ? 'assessment' : 'main';
+      // navKey가 바뀌는 경우(auth→main 등)는 Navigation.tsx가 Stack.Navigator를 remount해 자동 전환된다.
+      // navKey가 그대로인 경우(예: 익명 main 사용자가 requires_assessment=false 기존 계정으로 로그인)엔
+      // remount가 없으므로 여기서 명시적으로 이동해야 화면 전환이 이뤄진다.
+      if (prevNavKey === nextNavKey && navigation.isFocused()) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: nextNavKey === 'assessment' ? 'Assessment' : 'Main' }],
+        });
+      }
     } catch {
       setError('이메일 또는 비밀번호가 올바르지 않습니다');
     } finally {
