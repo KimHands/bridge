@@ -20,6 +20,10 @@ class Routine(Base):
     target_keywords: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     phq_tier_min: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=1)
     phq_tier_max: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=4)
+    # 과제 부담 수준: 1=최소 부담(무기력·우울 저에너지 트랙 전용), 2=일반. (B4)
+    effort_level: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, server_default="2", default=2
+    )
 
 
 class UserRoutine(Base, TimestampMixin):

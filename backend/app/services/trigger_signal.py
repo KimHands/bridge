@@ -65,3 +65,19 @@ def passes_mood_gate(
         return True
     baseline_mean, baseline_std = baseline
     return current_mood <= baseline_mean - sensitivity * baseline_std
+
+
+# 저에너지(무기력·우울) 상태에서는 과제 부담을 낮춰 "최소 과제 트랙"으로 배정한다(B4).
+LOW_ENERGY_KEYWORDS = frozenset({"무기력한", "우울한"})
+
+
+def is_minimal_task_track(keywords: list[str]) -> bool:
+    """발동 키워드가 모두 저에너지 상태(무기력·우울)이면 최소 부담 루틴만 배정한다.
+
+    무기력한 사용자에게 높은 부담의 과제를 주면 수행 실패가 좌절로 이어질 수 있어,
+    이 경우 effort_level=1(최소 부담) 루틴으로 한정한다. 저에너지 키워드가 섞여 있지
+    않으면(예: 짜증나는·불안한 포함) 일반 트랙으로 둔다.
+    """
+    if not keywords:
+        return False
+    return all(k in LOW_ENERGY_KEYWORDS for k in keywords)
