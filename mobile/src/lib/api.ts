@@ -332,8 +332,9 @@ export const me = {
   // /me/stats 엔드포인트 없음 — 통계는 missions.weekly + diary.list 조합으로 대체
 
   // DELETE /users/me — 회원 탈퇴(비밀번호 재확인). 성공 시 모든 개인정보 즉시 파기.
-  deleteAccount: (password: string): Promise<{ deleted: boolean }> =>
-    api.delete<{ deleted: boolean }>('/users/me', { data: { password } }).then(r => r.data),
+  // 익명 사용자(password_hash 없음)는 비밀번호 없이 호출 가능 — JWT 소유가 본인 증명.
+  deleteAccount: (password?: string): Promise<{ deleted: boolean }> =>
+    api.delete<{ deleted: boolean }>('/users/me', { data: password ? { password } : {} }).then(r => r.data),
 };
 
 export const notifications = {

@@ -55,7 +55,8 @@ type AuthState = {
   login: (email: string, password: string) => Promise<User>;
   signup: (p: { email: string; password: string; nickname: string }) => Promise<User>;
   logout: () => Promise<void>;
-  deleteAccount: (password: string) => Promise<void>;
+  // 익명 사용자는 비밀번호가 없으므로 password 생략 가능
+  deleteAccount: (password?: string) => Promise<void>;
   // 승격(계정 만들기) 완료 후 로컬 상태 갱신 — 서버는 계속 같은 user_id를 사용해 기록을 보존한다.
   markUpgraded: () => Promise<void>;
 };

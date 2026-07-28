@@ -33,13 +33,18 @@ async def delete_account(
     개인정보처리방침 7조('탈퇴 후 7일 이내 파기') 이행. 즉시 파기이므로 7일 이내에 포함된다.
     user 행 삭제 시 DB의 ON DELETE CASCADE로 일기·자가평가·루틴·미션·알림·챗봇 메모리가
     연쇄 삭제되며, Redis의 리프레시 세션과 챗봇 대화 세션은 명시적으로 삭제한다.
+
+    익명 사용자(password_hash=NULL)는 애초에 비밀번호가 없으므로 재확인을 건너뛴다 —
+    JWT 소유(get_current_user 통과) 자체가 본인 증명이다. 비익명 사용자는 기존대로
+    비밀번호 재확인을 요구한다.
     """
-    # 1) 비밀번호 재확인 — 오삭제·탈취 토큰 악용 방지
-    if not verify_password(body.password, current_user.password_hash):
-        raise HTTPException(
-            status_code=401,
-            detail={"code": "INVALID_CREDENTIALS", "message": "비밀번호가 올바르지 않습니다"},
-        )
+    # 1) 비밀번호 재확인 — 오삭제·탈취 토큰 악용 방지 (익명 사용자는 비밀번호 자체가 없어 생략)
+    if current_user.password_hash is not None:
+        if not body.password or not verify_password(body.password, current_user.password_hash):
+            raise HTTPException(
+                status_code=401,
+                detail={"code": "INVALID_CREDENTIALS", "message": "비밀번호가 올바르지 않습니다"},
+            )
 
     user_id = str(current_user.id)
 
