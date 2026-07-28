@@ -16,6 +16,7 @@ import {
   Target, Trophy, ChartBar, Notepad,
   Bell, Moon, Lock, Globe,
   Question, Envelope, Scroll, ShieldCheck, Megaphone, Lifebuoy,
+  ShieldPlus,
 } from 'phosphor-react-native';
 
 const ICON_PROPS = { size: 18, color: palette.primary, weight: 'duotone' as const };
@@ -127,6 +128,11 @@ export default function MyPageScreen() {
           { icon: <ChartBar {...ICON_PROPS} />, label: '이전 자가평가 결과 보기', onPress: () => navigation.navigate('Assessment', { mode: 'view' }) },
           { icon: <Notepad {...ICON_PROPS} />, label: '자가평가 다시 하기', onPress: () => navigation.navigate('Assessment') },
         ]}/>
+        {user?.is_anonymous && (
+          <Section title="계정" items={[
+            { icon: <ShieldPlus {...ICON_PROPS} />, label: '계정 만들기 (기록 지키기)', onPress: () => navigation.navigate('Upgrade') },
+          ]}/>
+        )}
         <Section title="설정" items={[
           { icon: <Bell {...ICON_PROPS} />, label: '알림 설정', onPress: () => navigation.navigate('NotificationSettings') },
           { icon: <Moon {...ICON_PROPS} />, label: '다크 모드', toggle: true, toggleOn: darkOn, onToggle: () => setDarkOn(v => !v) },

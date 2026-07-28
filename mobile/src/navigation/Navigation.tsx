@@ -16,6 +16,7 @@ import LoginScreen         from '@/screens/auth/LoginScreen';
 import SignupScreen        from '@/screens/auth/SignupScreen';
 import AssessmentScreen    from '@/screens/auth/AssessmentScreen';
 import InitialRoutineScreen from '@/screens/auth/InitialRoutineScreen';
+import UpgradeScreen       from '@/screens/auth/UpgradeScreen';
 
 // Main tabs
 import HomeScreen          from '@/screens/main/HomeScreen';
@@ -62,6 +63,7 @@ export type RootStackParamList = {
   Legal: { kind: LegalKind };
   Chat: undefined;
   SupportConnect: undefined;
+  Upgrade: undefined;
 };
 
 export type MainTabParamList = {
@@ -148,6 +150,7 @@ export default function Navigation() {
             <Stack.Screen name="Legal"                component={LegalScreen}/>
             <Stack.Screen name="Chat"                 component={ChatScreen}/>
             <Stack.Screen name="SupportConnect"       component={SupportConnectScreen}/>
+            <Stack.Screen name="Upgrade"               component={UpgradeScreen}/>
             {/* re-running assessment from MyPage */}
             <Stack.Screen name="Assessment"      component={AssessmentScreen}/>
             <Stack.Screen name="InitialRoutine"  component={InitialRoutineScreen}/>
