@@ -16,6 +16,7 @@ import {
   Target, Trophy, ChartBar, Notepad,
   Bell, Moon, Lock, Globe,
   Question, Envelope, Scroll, ShieldCheck, Megaphone, Lifebuoy,
+  ShieldPlus, SignIn,
 } from 'phosphor-react-native';
 
 const ICON_PROPS = { size: 18, color: palette.primary, weight: 'duotone' as const };
@@ -55,19 +56,46 @@ export default function MyPageScreen() {
   const notImplemented = (label: string) =>
     Alert.alert(label, '해당 기능은 준비 중이에요.');
 
-  // 1단계: 파기 안내 경고 → 동의 시 비밀번호 확인 모달 오픈
+  // 1단계: 파기 안내 경고 → 동의 시 분기
+  // - 익명 사용자: 비밀번호가 없으므로(password_hash=NULL) 모달 없이 바로 탈퇴 실행(JWT 소유가 본인 증명)
+  // - 비익명 사용자: 기존대로 비밀번호 확인 모달 오픈
   const handleDeleteAccount = () => {
     Alert.alert(
       '회원 탈퇴',
       '탈퇴하면 일기·감정 기록·자가평가·루틴·챗봇 대화 등 모든 데이터가 즉시 영구 삭제되며 복구할 수 없어요. 계속할까요?',
       [
         { text: '취소', style: 'cancel' },
-        { text: '계속', style: 'destructive', onPress: () => { setDeletePw(''); setDeleteOpen(true); } },
+        {
+          text: '계속',
+          style: 'destructive',
+          onPress: () => {
+            if (user?.is_anonymous) {
+              submitAnonymousDelete();
+            } else {
+              setDeletePw('');
+              setDeleteOpen(true);
+            }
+          },
+        },
       ],
     );
   };
 
-  // 2단계: 비밀번호 재확인 후 탈퇴 실행
+  // 익명 사용자 전용: 비밀번호 없이 즉시 탈퇴 실행
+  const submitAnonymousDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      // deleteAccount가 user/token을 비우면 네비게이터가 인증 스택으로 자동 전환됨.
+    } catch (e) {
+      const err = getApiError(e);
+      Alert.alert('탈퇴 실패', err.message);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // 2단계(비익명 전용): 비밀번호 재확인 후 탈퇴 실행
   const submitDeleteAccount = async () => {
     if (!deletePw.trim()) {
       Alert.alert('비밀번호 확인', '비밀번호를 입력해 주세요.');
@@ -127,6 +155,15 @@ export default function MyPageScreen() {
           { icon: <ChartBar {...ICON_PROPS} />, label: '이전 자가평가 결과 보기', onPress: () => navigation.navigate('Assessment', { mode: 'view' }) },
           { icon: <Notepad {...ICON_PROPS} />, label: '자가평가 다시 하기', onPress: () => navigation.navigate('Assessment') },
         ]}/>
+        {user?.is_anonymous && (
+          <Section title="계정" items={[
+            { icon: <ShieldPlus {...ICON_PROPS} />, label: '계정 만들기 (기록 지키기)', onPress: () => navigation.navigate('Upgrade') },
+            // 기존 이메일 계정이 있는 사용자를 위한 진입점 — 재설치/기기변경 시 자동 익명
+            // 부트스트랩 때문에 로그인 화면에 닿지 못하는 문제(B6 리뷰 제품흐름 이슈) 대응.
+            // device_secret은 그대로 두고 로그인 화면으로만 이동한다.
+            { icon: <SignIn {...ICON_PROPS} />, label: '이미 계정이 있어요 · 로그인', onPress: () => navigation.navigate('Login') },
+          ]}/>
+        )}
         <Section title="설정" items={[
           { icon: <Bell {...ICON_PROPS} />, label: '알림 설정', onPress: () => navigation.navigate('NotificationSettings') },
           { icon: <Moon {...ICON_PROPS} />, label: '다크 모드', toggle: true, toggleOn: darkOn, onToggle: () => setDarkOn(v => !v) },
@@ -145,8 +182,10 @@ export default function MyPageScreen() {
         <Pressable onPress={handleLogout} style={s.logoutBtn}>
           <Text style={{ fontSize: 14, fontWeight: '600', color: palette.textCaption }}>로그아웃</Text>
         </Pressable>
-        <Pressable onPress={handleDeleteAccount} style={s.deleteBtn}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: palette.danger }}>회원 탈퇴</Text>
+        <Pressable onPress={handleDeleteAccount} disabled={deleting} style={s.deleteBtn}>
+          {deleting
+            ? <ActivityIndicator size="small" color={palette.danger} />
+            : <Text style={{ fontSize: 13, fontWeight: '600', color: palette.danger }}>회원 탈퇴</Text>}
         </Pressable>
         <Text style={s.version}>v1.0.0 · Bridge</Text>
       </View>

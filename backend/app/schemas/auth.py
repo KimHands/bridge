@@ -30,12 +30,33 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class AnonymousRequest(BaseModel):
+    device_secret: str
+    nickname: str | None = None
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 
 
 class LogoutRequest(BaseModel):
     refresh_token: str
+
+
+class UpgradeRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("비밀번호는 8자 이상이어야 합니다")
+        return v
+
+
+class VerifyEmailRequest(BaseModel):
+    code: str
 
 
 class TokenResponse(BaseModel):

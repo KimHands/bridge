@@ -22,6 +22,7 @@ export default function SignupScreen({ navigation }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const signup = useAuth((s) => s.signup);
+  const currentUser = useAuth((s) => s.user);
 
   const allChecked = agree.tos && agree.privacy && agree.marketing;
   const toggleAll = () => { const v = !allChecked; setAgree({ tos: v, privacy: v, marketing: v }); };
@@ -35,7 +36,19 @@ export default function SignupScreen({ navigation }: Props) {
     if (!agree.tos || !agree.privacy) return setError('필수 약관에 동의해주세요');
     setLoading(true);
     try {
-      await signup({ email, password: pw, nickname });
+      // Navigation.tsx의 navKey 계산과 동일한 로직으로 가입 전 navKey를 미리 구해둔다.
+      const prevNavKey = !currentUser ? 'auth' : currentUser.requires_assessment ? 'assessment' : 'main';
+      const newUser = await signup({ email, password: pw, nickname });
+      const nextNavKey = newUser.requires_assessment ? 'assessment' : 'main';
+      // navKey가 바뀌는 경우는 Navigation.tsx가 Stack.Navigator를 remount해 자동 전환된다.
+      // navKey가 그대로인 경우(예: 익명 assessment 사용자가 새로 가입해도 여전히 requires_assessment=true)엔
+      // remount가 없으므로 여기서 명시적으로 이동해야 화면 전환이 이뤄진다.
+      if (prevNavKey === nextNavKey && navigation.isFocused()) {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: nextNavKey === 'assessment' ? 'Assessment' : 'Main' }],
+        });
+      }
     } catch {
       setError('회원가입에 실패했습니다. 다시 시도해주세요');
     } finally {

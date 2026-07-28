@@ -85,3 +85,35 @@ async def delete_chat_session(user_id: str) -> None:
     """챗봇 대화 세션을 즉시 삭제. 회원 탈퇴 시 Redis 잔존 대화 파기에 사용."""
     r = await get_redis()
     await r.delete(_chat_session_key(user_id))
+
+
+def _pending_verify_key(user_id: str) -> str:
+    return f"verify:{user_id}"
+
+
+async def set_pending_verify(user_id: str, email: str, code: str, ttl: int) -> None:
+    """승격 시 이메일 인증 대기 상태를 저장한다. 평문 이메일은 여기(Redis TTL)에만
+    머물고, verify 성공 시 삭제된다(email_hash만 영속). AES-256-GCM으로 암호화해
+    저장한다(H5 aad 패턴과 동일).
+    """
+    r = await get_redis()
+    payload = encrypt_json({"email": email, "code": code}, aad=user_id)
+    await r.setex(_pending_verify_key(user_id), ttl, payload)
+
+
+async def get_pending_verify(user_id: str) -> dict | None:
+    """대기 중인 인증 정보를 복호화해 반환. 없거나 만료·복호화 실패 시 None."""
+    r = await get_redis()
+    raw = await r.get(_pending_verify_key(user_id))
+    if not raw:
+        return None
+    try:
+        return decrypt_json(raw, aad=user_id)
+    except Exception:
+        logger.warning("pending verify decrypt failed; treating as absent")
+        return None
+
+
+async def del_pending_verify(user_id: str) -> None:
+    r = await get_redis()
+    await r.delete(_pending_verify_key(user_id))

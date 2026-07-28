@@ -3,7 +3,13 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
-import type { TokenResponse, RefreshResponse, UserMe, RegisterRequest } from '@/types/auth';
+import type {
+  TokenResponse,
+  RefreshResponse,
+  UserMe,
+  RegisterRequest,
+  EmailVerificationStatus,
+} from '@/types/auth';
 import type { AssessmentRequest, AssessmentResponse, AssessmentHistoryItem, CauseCode } from '@/types/assessment';
 import type {
   DiaryCreateRequest,
@@ -41,6 +47,7 @@ export const API_BASE_URL =
 const TOKEN_KEY = 'bridge.access_token';
 const REFRESH_KEY = 'bridge.refresh_token';
 const USER_KEY = 'bridge.user';
+const DEVICE_SECRET_KEY = 'bridge.device_secret';
 
 // ── Token / User helpers ─────────────────────────────────────
 export async function getToken()                        { return SecureStore.getItemAsync(TOKEN_KEY); }
@@ -50,20 +57,28 @@ export async function getRefreshToken()                 { return SecureStore.get
 export async function setRefreshToken(t: string)        { return SecureStore.setItemAsync(REFRESH_KEY, t); }
 export async function clearRefreshToken()               { return SecureStore.deleteItemAsync(REFRESH_KEY); }
 // 도메인 원칙: email 원문은 백엔드에서만 보관(hash 분리). 클라이언트 SecureStore에는 식별 최소 정보만 저장.
-export type StoredUser = Omit<UserMe, 'email'>;
+// is_anonymous는 백엔드 /auth/me 응답에 없어(승격 후에도 필드 미제공) 클라이언트가 로컬로만 추적한다.
+export type StoredUser = Omit<UserMe, 'email'> & { is_anonymous: boolean };
 export async function getStoredUser(): Promise<StoredUser | null> {
   const v = await SecureStore.getItemAsync(USER_KEY);
   return v ? (JSON.parse(v) as StoredUser) : null;
 }
-export async function setStoredUser(u: UserMe) {
+export async function setStoredUser(u: UserMe, is_anonymous: boolean) {
   const stored: StoredUser = {
     user_id: u.user_id,
     nickname: u.nickname,
     requires_assessment: u.requires_assessment,
+    is_anonymous,
   };
   return SecureStore.setItemAsync(USER_KEY, JSON.stringify(stored));
 }
 export async function clearStoredUser()                 { return SecureStore.deleteItemAsync(USER_KEY); }
+
+// ── Device secret (익명 부트스트랩 신원) ─────────────────────
+// 기기 내 SecureStore에만 저장되는 256-bit 랜덤 시크릿. 서버에는 해시만 보관된다(app/core/security.hash_device_secret).
+export async function getDeviceSecret()                 { return SecureStore.getItemAsync(DEVICE_SECRET_KEY); }
+export async function setDeviceSecret(s: string)        { return SecureStore.setItemAsync(DEVICE_SECRET_KEY, s); }
+export async function clearDeviceSecret()               { return SecureStore.deleteItemAsync(DEVICE_SECRET_KEY); }
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -179,6 +194,22 @@ export const auth = {
   // POST /auth/refresh  → RefreshResponse
   refresh: (refreshToken: string): Promise<RefreshResponse> =>
     api.post<RefreshResponse>('/auth/refresh', { refresh_token: refreshToken }).then(r => r.data),
+
+  // POST /auth/anonymous  → TokenResponse ("바로 시작" — 회원가입 없이 기기 시크릿으로 세션 생성)
+  anonymous: (device_secret: string, nickname?: string): Promise<TokenResponse> =>
+    api.post<TokenResponse>('/auth/anonymous', { device_secret, nickname }).then(r => r.data),
+
+  // POST /auth/upgrade  → { email_verified: false } — 익명 계정을 이메일·비밀번호 계정으로 승격(기존 기록 보존)
+  upgrade: (email: string, password: string): Promise<EmailVerificationStatus> =>
+    api.post<EmailVerificationStatus>('/auth/upgrade', { email, password }).then(r => r.data),
+
+  // POST /auth/verify-email  → { email_verified: true }
+  verifyEmail: (code: string): Promise<EmailVerificationStatus> =>
+    api.post<EmailVerificationStatus>('/auth/verify-email', { code }).then(r => r.data),
+
+  // POST /auth/resend-verification  → { email_verified: false }
+  resendVerification: (): Promise<EmailVerificationStatus> =>
+    api.post<EmailVerificationStatus>('/auth/resend-verification').then(r => r.data),
 };
 
 export const assessments = {
@@ -301,8 +332,9 @@ export const me = {
   // /me/stats 엔드포인트 없음 — 통계는 missions.weekly + diary.list 조합으로 대체
 
   // DELETE /users/me — 회원 탈퇴(비밀번호 재확인). 성공 시 모든 개인정보 즉시 파기.
-  deleteAccount: (password: string): Promise<{ deleted: boolean }> =>
-    api.delete<{ deleted: boolean }>('/users/me', { data: { password } }).then(r => r.data),
+  // 익명 사용자(password_hash 없음)는 비밀번호 없이 호출 가능 — JWT 소유가 본인 증명.
+  deleteAccount: (password?: string): Promise<{ deleted: boolean }> =>
+    api.delete<{ deleted: boolean }>('/users/me', { data: password ? { password } : {} }).then(r => r.data),
 };
 
 export const notifications = {

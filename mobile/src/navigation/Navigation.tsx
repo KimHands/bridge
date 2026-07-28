@@ -16,6 +16,7 @@ import LoginScreen         from '@/screens/auth/LoginScreen';
 import SignupScreen        from '@/screens/auth/SignupScreen';
 import AssessmentScreen    from '@/screens/auth/AssessmentScreen';
 import InitialRoutineScreen from '@/screens/auth/InitialRoutineScreen';
+import UpgradeScreen       from '@/screens/auth/UpgradeScreen';
 
 // Main tabs
 import HomeScreen          from '@/screens/main/HomeScreen';
@@ -62,6 +63,7 @@ export type RootStackParamList = {
   Legal: { kind: LegalKind };
   Chat: undefined;
   SupportConnect: undefined;
+  Upgrade: undefined;
 };
 
 export type MainTabParamList = {
@@ -132,10 +134,19 @@ export default function Navigation() {
             <Stack.Screen name="Assessment"     component={AssessmentScreen}/>
             <Stack.Screen name="InitialRoutine" component={InitialRoutineScreen}/>
             <Stack.Screen name="Legal"          component={LegalScreen}/>
+            {/* 익명 사용자가 기존 계정으로 로그인할 수 있는 진입점(MyPage에서 접근하려면
+                requires_assessment=false여야 하지만, 온보딩 등 다른 경로 대비 동일하게 등록) */}
+            <Stack.Screen name="Login"           component={LoginScreen}/>
+            <Stack.Screen name="Signup"          component={SignupScreen}/>
           </Stack.Group>
         ) : (
           <Stack.Group>
             <Stack.Screen name="Main" component={MainTabs}/>
+            {/* 익명 사용자(user !== null)는 !user 분기의 Login 화면에 닿을 수 없으므로
+                여기 등록해 MyPage "이미 계정이 있어요" 진입점에서 이동 가능하게 한다.
+                device_secret은 지우지 않고 이동 — 로그인 성공 시 navKey가 바뀌며 자동 remount. */}
+            <Stack.Screen name="Login"         component={LoginScreen}/>
+            <Stack.Screen name="Signup"        component={SignupScreen}/>
             <Stack.Screen name="DiaryMood"     component={DiaryMoodScreen}/>
             <Stack.Screen name="DiaryKeyword"  component={DiaryKeywordScreen}/>
             <Stack.Screen name="DiaryQuestion" component={DiaryQuestionScreen}/>
@@ -148,6 +159,7 @@ export default function Navigation() {
             <Stack.Screen name="Legal"                component={LegalScreen}/>
             <Stack.Screen name="Chat"                 component={ChatScreen}/>
             <Stack.Screen name="SupportConnect"       component={SupportConnectScreen}/>
+            <Stack.Screen name="Upgrade"               component={UpgradeScreen}/>
             {/* re-running assessment from MyPage */}
             <Stack.Screen name="Assessment"      component={AssessmentScreen}/>
             <Stack.Screen name="InitialRoutine"  component={InitialRoutineScreen}/>
