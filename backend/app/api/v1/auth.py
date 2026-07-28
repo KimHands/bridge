@@ -1,9 +1,10 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
@@ -12,6 +13,7 @@ from app.core.redis import (
     del_pending_verify,
     delete_refresh_session,
     get_pending_verify,
+    get_redis,
     get_refresh_session,
     incr_verify_attempts,
     is_blacklisted,
@@ -44,6 +46,7 @@ from app.schemas.auth import (
     UpgradeRequest,
     VerifyEmailRequest,
 )
+from app.services.anon_rate_limiter import check_anon_creation
 from app.services.email_sender import get_email_sender
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -51,6 +54,15 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 # 이메일 인증 대기 TTL과 코드 시도 상한(브루트포스 방어). 임상 근거 없는 운영값.
 VERIFY_TTL_SECONDS = 600
 VERIFY_MAX_ATTEMPTS = 5
+
+
+def _client_ip(request: Request) -> str:
+    """레이트리밋 키로 쓸 출처 IP. 프록시 뒤라면 X-Forwarded-For 첫 홉을 쓴다.
+    (ALB 배포 시 신뢰 홉 고정 하드닝은 후속 과제 — anon_rate_limiter 주석 참조.)"""
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        return xff.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
 
 
 @router.post("/register", status_code=201, response_model=SuccessResponse[TokenResponse])
@@ -92,20 +104,40 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("/anonymous", status_code=201, response_model=SuccessResponse[TokenResponse])
-async def anonymous(body: AnonymousRequest, db: AsyncSession = Depends(get_db)):
+async def anonymous(
+    body: AnonymousRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
     dsh = hash_device_secret(body.device_secret)
 
     result = await db.execute(select(User).where(User.device_secret_hash == dsh))
     user = result.scalar_one_or_none()
     if user is None:
+        # 신규 계정 생성만 IP 기준 레이트리밋(재인증은 대상 아님)
+        r = await get_redis()
+        if not await check_anon_creation(r, _client_ip(request)):
+            raise HTTPException(
+                status_code=429,
+                detail={"code": "TOO_MANY_REQUESTS", "message": "잠시 후 다시 시도해주세요"},
+            )
         user = User(
             nickname=body.nickname or "익명",
             is_anonymous=True,
             device_secret_hash=dsh,
         )
         db.add(user)
-        await db.commit()
-        await db.refresh(user)
+        try:
+            await db.commit()
+            await db.refresh(user)
+        except IntegrityError:
+            # 동시 요청이 같은 device_secret으로 먼저 생성한 경우(UNIQUE 충돌) →
+            # 재조회해 그 사용자로 재인증 처리(get-or-create의 경쟁 흡수, TOCTOU 해소).
+            await db.rollback()
+            result = await db.execute(
+                select(User).where(User.device_secret_hash == dsh)
+            )
+            user = result.scalar_one()
 
     result = await db.execute(select(Assessment).where(Assessment.user_id == user.id).limit(1))
     requires_assessment = result.scalars().first() is None
