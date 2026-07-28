@@ -1,4 +1,5 @@
 import hashlib
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 
@@ -39,3 +40,13 @@ def create_refresh_token(user_id: str) -> tuple[str, str]:
 
 def decode_token(token: str) -> dict:
     return jwt.decode(token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm])
+
+
+def hash_device_secret(secret: str) -> str:
+    """SHA-256로 device_secret을 해시. 결정적이며 64자 hex."""
+    return hashlib.sha256(secret.encode()).hexdigest()
+
+
+def generate_verification_code() -> str:
+    """6자리 랜덤 인증코드 생성."""
+    return f"{secrets.randbelow(1_000_000):06d}"
