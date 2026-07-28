@@ -9,15 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.redis import (
     blacklist_token,
+    del_pending_verify,
     delete_refresh_session,
+    get_pending_verify,
     get_refresh_session,
     is_blacklisted,
+    set_pending_verify,
     set_refresh_session,
 )
 from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    generate_verification_code,
     hash_device_secret,
     hash_email,
     hash_password,
@@ -35,7 +39,10 @@ from app.schemas.auth import (
     RegisterRequest,
     SuccessResponse,
     TokenResponse,
+    UpgradeRequest,
+    VerifyEmailRequest,
 )
+from app.services.email_sender import get_email_sender
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -55,6 +62,7 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
         email_hash=email_hash,
         password_hash=hash_password(body.password),
         nickname=body.nickname,
+        is_anonymous=False,
     )
     db.add(user)
     await db.commit()
@@ -259,3 +267,73 @@ async def logout(
         pass
 
     return {"success": True, "data": None, "message": "로그아웃 완료"}
+
+
+@router.post("/upgrade", response_model=SuccessResponse[dict])
+async def upgrade(
+    body: UpgradeRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """익명 계정을 이메일·비밀번호 계정으로 승격한다. 같은 user.id를 그대로
+    사용해 FK로 연결된 기존 데이터(일기 등)를 보존한다."""
+    if current_user.email_hash is not None:
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "ALREADY_UPGRADED", "message": "이미 계정이 연결돼 있어요"},
+        )
+
+    email_hash = hash_email(body.email)
+    result = await db.execute(select(User).where(User.email_hash == email_hash))
+    if result.scalar_one_or_none():
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "EMAIL_ALREADY_EXISTS", "message": "이미 사용 중인 이메일이에요"},
+        )
+
+    current_user.email_hash = email_hash
+    current_user.password_hash = hash_password(body.password)
+    current_user.is_anonymous = False
+    await db.commit()
+
+    code = generate_verification_code()
+    await set_pending_verify(str(current_user.id), body.email, code, ttl=600)
+    await get_email_sender().send_code(body.email, code)
+
+    return {"success": True, "data": {"email_verified": False}, "message": "인증 코드를 보냈어요"}
+
+
+@router.post("/verify-email", response_model=SuccessResponse[dict])
+async def verify_email(
+    body: VerifyEmailRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    pending = await get_pending_verify(str(current_user.id))
+    if not pending or pending["code"] != body.code:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "INVALID_CODE", "message": "코드가 올바르지 않거나 만료됐어요"},
+        )
+
+    current_user.email_verified = True
+    await db.commit()
+    await del_pending_verify(str(current_user.id))
+
+    return {"success": True, "data": {"email_verified": True}, "message": "확인됐어요"}
+
+
+@router.post("/resend-verification", response_model=SuccessResponse[dict])
+async def resend_verification(current_user: User = Depends(get_current_user)):
+    pending = await get_pending_verify(str(current_user.id))
+    if not pending:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": "NO_PENDING_VERIFICATION", "message": "진행 중인 인증 요청이 없어요"},
+        )
+
+    code = generate_verification_code()
+    await set_pending_verify(str(current_user.id), pending["email"], code, ttl=600)
+    await get_email_sender().send_code(pending["email"], code)
+
+    return {"success": True, "data": {"email_verified": False}, "message": "인증 코드를 다시 보냈어요"}
