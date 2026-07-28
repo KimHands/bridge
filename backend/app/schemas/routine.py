@@ -47,3 +47,16 @@ class RoutineLibraryItem(BaseModel):
 
 class RoutineLibraryResponse(BaseModel):
     routines: list[RoutineLibraryItem]
+
+
+class RoutineOut(BaseModel):
+    routine_id: int
+    title: str
+    description: str
+
+
+class RoutineRequestResponse(BaseModel):
+    assigned: RoutineOut | None
+    state: str  # assigned | cooldown | no_routine
+    offer_connection: bool
+    nudge: bool

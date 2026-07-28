@@ -19,6 +19,7 @@ import type {
   RoutineAddResponse,
   RoutineCompleteResponse,
   RoutineLibraryResponse,
+  RoutineRequestResponse,
 } from '@/types/routine';
 import type {
   ChatMessageRequest,
@@ -213,6 +214,12 @@ export const routines = {
   // GET /routines/library  → RoutineLibraryResponse
   library: (): Promise<RoutineLibraryResponse> =>
     api.get<RoutineLibraryResponse>('/routines/library').then(r => r.data),
+
+  // POST /routines/request  → RoutineRequestResponse ("지금 도움이 필요해요" 사용자 요청 경로)
+  // 요청 본문 없음. 응답은 항상 HTTP 201이며 data.state로 분기(assigned/cooldown/no_routine).
+  // 과도한 요청 시 429 — 에러 처리는 getApiError()로 status===429 확인.
+  request: (): Promise<RoutineRequestResponse> =>
+    api.post<RoutineRequestResponse>('/routines/request').then(r => r.data),
 };
 
 export const diary = {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, fontFamily, moodMeta } from '@/theme/tokens';
 import { Card, Pill } from '@/components/atoms';
 import CircleGauge from '@/components/CircleGauge';
+import HelpRequestSheet from '@/components/HelpRequestSheet';
 import { useAuth } from '@/store/auth';
 import { useRoutineList } from '@/hooks/useRoutineQueries';
 import { useDiaryList } from '@/hooks/useDiaryQueries';
@@ -40,6 +41,7 @@ export default function HomeScreen() {
   const { data: routinesData } = useRoutineList();
   const { data: diariesData } = useDiaryList();
   const startDiary = useStartDiary();
+  const [helpVisible, setHelpVisible] = useState(false);
 
   const today = new Date();
   const dateStr = `${today.getMonth() + 1}월 ${today.getDate()}일`;
@@ -92,6 +94,15 @@ export default function HomeScreen() {
       </LinearGradient>
 
       <View style={s.content}>
+        {/* 지금 도움이 필요해요 — 사용자 요청 경로 진입점. 위기 판단은 앱이 하지 않고 사용자 선택에 맡긴다. */}
+        <Pressable
+          style={({ pressed }) => [s.helpBtn, pressed && { opacity: 0.9 }]}
+          onPress={() => setHelpVisible(true)}
+        >
+          <Text style={s.helpBtnText}>지금 도움이 필요해요</Text>
+          <Text style={s.helpBtnArrow}>→</Text>
+        </Pressable>
+
         {/* Mood card */}
         <Card style={{ borderRadius: 20 }}>
           <View style={s.moodHeader}>
@@ -179,6 +190,7 @@ export default function HomeScreen() {
         )}
       </View>
     </ScrollView>
+    <HelpRequestSheet visible={helpVisible} onClose={() => setHelpVisible(false)} />
     </SafeAreaView>
   );
 }
@@ -238,4 +250,12 @@ const s = StyleSheet.create({
   checkCircle: { width: 20, height: 20, borderRadius: 10, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center' },
   emptyHint: { fontSize: 13, color: palette.textCaption, lineHeight: 20, paddingVertical: 4 },
   btnRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  helpBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: palette.primary,
+    borderRadius: 16, paddingHorizontal: 18, paddingVertical: 16,
+    marginBottom: 14,
+  },
+  helpBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  helpBtnArrow: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });
