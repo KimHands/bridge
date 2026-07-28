@@ -91,13 +91,18 @@ def _pending_verify_key(user_id: str) -> str:
     return f"verify:{user_id}"
 
 
-async def set_pending_verify(user_id: str, email: str, code: str, ttl: int) -> None:
-    """승격 시 이메일 인증 대기 상태를 저장한다. 평문 이메일은 여기(Redis TTL)에만
-    머물고, verify 성공 시 삭제된다(email_hash만 영속). AES-256-GCM으로 암호화해
-    저장한다(H5 aad 패턴과 동일).
+async def set_pending_verify(
+    user_id: str, email: str, code: str, password_hash: str, ttl: int
+) -> None:
+    """승격 시 이메일 인증 대기 상태를 저장한다. 평문 이메일·비밀번호 해시는
+    여기(Redis TTL)에만 머물고, verify 성공 시점에 User로 확정된 뒤 삭제된다
+    (인증 전에는 User를 건드리지 않음 — 미검증 이메일 선점 방지). AES-256-GCM으로
+    암호화해 저장한다(H5 aad 패턴과 동일).
     """
     r = await get_redis()
-    payload = encrypt_json({"email": email, "code": code}, aad=user_id)
+    payload = encrypt_json(
+        {"email": email, "code": code, "password_hash": password_hash}, aad=user_id
+    )
     await r.setex(_pending_verify_key(user_id), ttl, payload)
 
 
@@ -117,3 +122,24 @@ async def get_pending_verify(user_id: str) -> dict | None:
 async def del_pending_verify(user_id: str) -> None:
     r = await get_redis()
     await r.delete(_pending_verify_key(user_id))
+
+
+def _verify_attempts_key(user_id: str) -> str:
+    return f"verify:attempts:{user_id}"
+
+
+async def incr_verify_attempts(user_id: str, ttl: int) -> int:
+    """이메일 인증 코드 시도 횟수를 원자적으로 증가시켜 반환한다(브루트포스 방어).
+    최초(1) 도달 시에만 TTL을 걸어 pending과 함께 만료되게 한다. INCR이 원자적이라
+    동시 요청에도 카운트는 정확하다."""
+    r = await get_redis()
+    n = await r.incr(_verify_attempts_key(user_id))
+    if n == 1:
+        await r.expire(_verify_attempts_key(user_id), ttl)
+    return n
+
+
+async def reset_verify_attempts(user_id: str) -> None:
+    """시도 카운터를 초기화한다(코드 재발급·인증 성공 시)."""
+    r = await get_redis()
+    await r.delete(_verify_attempts_key(user_id))
