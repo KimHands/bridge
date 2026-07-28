@@ -18,6 +18,7 @@ from app.core.security import (
     create_access_token,
     create_refresh_token,
     decode_token,
+    hash_device_secret,
     hash_email,
     hash_password,
     verify_password,
@@ -26,6 +27,7 @@ from app.dependencies.auth import bearer_scheme, get_current_user
 from app.models.assessment import Assessment
 from app.models.user import User
 from app.schemas.auth import (
+    AnonymousRequest,
     LoginRequest,
     LogoutRequest,
     RefreshRequest,
@@ -70,6 +72,42 @@ async def register(body: RegisterRequest, db: AsyncSession = Depends(get_db)):
             access_token=access_token,
             refresh_token=refresh_token,
             requires_assessment=True,
+        ),
+        "message": "ok",
+    }
+
+
+@router.post("/anonymous", status_code=201, response_model=SuccessResponse[TokenResponse])
+async def anonymous(body: AnonymousRequest, db: AsyncSession = Depends(get_db)):
+    dsh = hash_device_secret(body.device_secret)
+
+    result = await db.execute(select(User).where(User.device_secret_hash == dsh))
+    user = result.scalar_one_or_none()
+    if user is None:
+        user = User(
+            nickname=body.nickname or "익명",
+            is_anonymous=True,
+            device_secret_hash=dsh,
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+
+    result = await db.execute(select(Assessment).where(Assessment.user_id == user.id).limit(1))
+    requires_assessment = result.scalars().first() is None
+
+    access_token, _ = create_access_token(str(user.id))
+    refresh_token, _ = create_refresh_token(str(user.id))
+    await set_refresh_session(str(user.id), refresh_token)
+
+    return {
+        "success": True,
+        "data": TokenResponse(
+            user_id=str(user.id),
+            nickname=user.nickname,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            requires_assessment=requires_assessment,
         ),
         "message": "ok",
     }

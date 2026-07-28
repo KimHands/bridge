@@ -30,6 +30,11 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class AnonymousRequest(BaseModel):
+    device_secret: str
+    nickname: str | None = None
+
+
 class RefreshRequest(BaseModel):
     refresh_token: str
 
