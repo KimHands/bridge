@@ -13,7 +13,9 @@ from app.core.redis import (
     delete_refresh_session,
     get_pending_verify,
     get_refresh_session,
+    incr_verify_attempts,
     is_blacklisted,
+    reset_verify_attempts,
     set_pending_verify,
     set_refresh_session,
 )
@@ -45,6 +47,10 @@ from app.schemas.auth import (
 from app.services.email_sender import get_email_sender
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+# 이메일 인증 대기 TTL과 코드 시도 상한(브루트포스 방어). 임상 근거 없는 운영값.
+VERIFY_TTL_SECONDS = 600
+VERIFY_MAX_ATTEMPTS = 5
 
 
 @router.post("/register", status_code=201, response_model=SuccessResponse[TokenResponse])
@@ -275,8 +281,10 @@ async def upgrade(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """익명 계정을 이메일·비밀번호 계정으로 승격한다. 같은 user.id를 그대로
-    사용해 FK로 연결된 기존 데이터(일기 등)를 보존한다."""
+    """익명 계정 승격을 시작한다. 이메일 인증 전에는 User를 바꾸지 않고(미검증
+    이메일 선점 방지) 이메일·비밀번호 해시·코드를 Redis pending에만 보관한다.
+    실제 email_hash/password_hash/is_anonymous 확정은 /verify-email에서 이뤄진다.
+    같은 user.id를 유지하므로 FK로 연결된 기존 데이터(일기 등)는 그대로 보존된다."""
     if current_user.email_hash is not None:
         raise HTTPException(
             status_code=409,
@@ -291,13 +299,15 @@ async def upgrade(
             detail={"code": "EMAIL_ALREADY_EXISTS", "message": "이미 사용 중인 이메일이에요"},
         )
 
-    current_user.email_hash = email_hash
-    current_user.password_hash = hash_password(body.password)
-    current_user.is_anonymous = False
-    await db.commit()
-
     code = generate_verification_code()
-    await set_pending_verify(str(current_user.id), body.email, code, ttl=600)
+    await set_pending_verify(
+        str(current_user.id),
+        body.email,
+        code,
+        hash_password(body.password),
+        ttl=VERIFY_TTL_SECONDS,
+    )
+    await reset_verify_attempts(str(current_user.id))
     await get_email_sender().send_code(body.email, code)
 
     return {"success": True, "data": {"email_verified": False}, "message": "인증 코드를 보냈어요"}
@@ -309,6 +319,17 @@ async def verify_email(
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
+    attempts = await incr_verify_attempts(str(current_user.id), ttl=VERIFY_TTL_SECONDS)
+    if attempts > VERIFY_MAX_ATTEMPTS:
+        await del_pending_verify(str(current_user.id))
+        raise HTTPException(
+            status_code=429,
+            detail={
+                "code": "TOO_MANY_ATTEMPTS",
+                "message": "시도가 너무 많아요. 코드를 다시 요청해 주세요",
+            },
+        )
+
     pending = await get_pending_verify(str(current_user.id))
     if not pending or pending["code"] != body.code:
         raise HTTPException(
@@ -316,9 +337,27 @@ async def verify_email(
             detail={"code": "INVALID_CODE", "message": "코드가 올바르지 않거나 만료됐어요"},
         )
 
+    # 코드 일치 — 확정 직전에 이메일 유니크를 다시 검사한다(pending 윈도 동안 다른
+    # 사용자가 같은 이메일을 먼저 인증했을 수 있음). 이 시점의 email_hash가 권위 있는 검사.
+    email_hash = hash_email(pending["email"])
+    taken = await db.execute(
+        select(User).where(User.email_hash == email_hash, User.id != current_user.id)
+    )
+    if taken.scalar_one_or_none():
+        await del_pending_verify(str(current_user.id))
+        await reset_verify_attempts(str(current_user.id))
+        raise HTTPException(
+            status_code=409,
+            detail={"code": "EMAIL_ALREADY_EXISTS", "message": "이미 사용 중인 이메일이에요"},
+        )
+
+    current_user.email_hash = email_hash
+    current_user.password_hash = pending["password_hash"]
+    current_user.is_anonymous = False
     current_user.email_verified = True
     await db.commit()
     await del_pending_verify(str(current_user.id))
+    await reset_verify_attempts(str(current_user.id))
 
     return {"success": True, "data": {"email_verified": True}, "message": "확인됐어요"}
 
@@ -333,7 +372,14 @@ async def resend_verification(current_user: User = Depends(get_current_user)):
         )
 
     code = generate_verification_code()
-    await set_pending_verify(str(current_user.id), pending["email"], code, ttl=600)
+    await set_pending_verify(
+        str(current_user.id),
+        pending["email"],
+        code,
+        pending["password_hash"],
+        ttl=VERIFY_TTL_SECONDS,
+    )
+    await reset_verify_attempts(str(current_user.id))
     await get_email_sender().send_code(pending["email"], code)
 
     return {"success": True, "data": {"email_verified": False}, "message": "인증 코드를 다시 보냈어요"}

@@ -107,9 +107,20 @@ async def _resend_verification(access_token: str) -> httpx.Response:
         )
 
 
-async def test_upgrade_preserves_existing_data_and_sets_email_hash():
-    """(a) 익명 사용자 → 일기 작성 → upgrade → email_hash 세팅·is_anonymous=false·
-    email_verified=false, 기존 일기 데이터 보존(같은 user.id)."""
+async def _upgrade_and_verify(user_id: str, access_token: str, email: str) -> None:
+    """upgrade → pending 코드 조회 → verify까지 완료해 계정을 실제 확정한다."""
+    upgrade_resp = await _upgrade(access_token, email)
+    assert upgrade_resp.status_code == 200
+    pending = await _get_pending_verify(user_id)
+    assert pending is not None
+    verify_resp = await _verify_email(access_token, pending["code"])
+    assert verify_resp.status_code == 200
+
+
+async def test_upgrade_does_not_mutate_user_before_verification():
+    """(a) 익명 사용자 → 일기 작성 → upgrade → 인증 전에는 User가 그대로여야 한다
+    (email_hash=None·is_anonymous=true·email_verified=false, 미검증 이메일 선점 방지).
+    기존 일기 데이터는 같은 user.id로 보존된다. 확정은 verify에서 이뤄진다."""
     user_id, access_token = await _create_anonymous_user()
 
     diary_resp = await _create_diary(access_token)
@@ -126,24 +137,24 @@ async def test_upgrade_preserves_existing_data_and_sets_email_hash():
     assert body["success"] is True
     assert body["data"]["email_verified"] is False
 
+    # 인증 전 — User 행은 변경되지 않아야 한다(미검증 이메일 선점 방지)
     user = await _fetch_user(uuid.UUID(user_id))
-    assert user.email_hash is not None
-    assert user.password_hash is not None
-    assert user.is_anonymous is False
+    assert user.email_hash is None
+    assert user.password_hash is None
+    assert user.is_anonymous is True
     assert user.email_verified is False
 
-    # 데이터 보존 — 승격 전/후 동일 user_id로 일기가 그대로 남아 있어야 한다
+    # 데이터 보존 — 동일 user_id로 일기가 그대로 남아 있어야 한다
     after = await _fetch_diary_count(uuid.UUID(user_id))
     assert after == before == 1
 
 
-async def test_upgrade_with_duplicate_email_returns_409():
-    """(b) 이미 사용 중인 이메일로 upgrade → 409 EMAIL_ALREADY_EXISTS."""
+async def test_upgrade_with_verified_duplicate_email_returns_409():
+    """(b) 이미 인증까지 마친 이메일로 upgrade → 409 EMAIL_ALREADY_EXISTS(조기 차단)."""
     email = f"dup-{uuid.uuid4()}@example.com"
 
-    _, first_token = await _create_anonymous_user()
-    first_resp = await _upgrade(first_token, email)
-    assert first_resp.status_code == 200
+    first_id, first_token = await _create_anonymous_user()
+    await _upgrade_and_verify(first_id, first_token, email)
 
     _, second_token = await _create_anonymous_user()
     second_resp = await _upgrade(second_token, email)
@@ -152,12 +163,43 @@ async def test_upgrade_with_duplicate_email_returns_409():
     assert second_resp.json()["detail"]["code"] == "EMAIL_ALREADY_EXISTS"
 
 
-async def test_verify_email_with_matching_code_marks_verified_and_clears_pending():
-    """(c) verify-email 코드 일치 → email_verified=true·Redis pending 삭제."""
+async def test_concurrent_unverified_upgrade_same_email_resolves_at_verify():
+    """미검증 upgrade는 이메일을 선점하지 않는다 — 두 익명 사용자가 같은 이메일로
+    upgrade하면 둘 다 200(pending)이고, 먼저 verify한 쪽이 이기며 나중 쪽은
+    verify에서 409 EMAIL_ALREADY_EXISTS로 해소된다(선점/락아웃 없음)."""
+    email = f"race-{uuid.uuid4()}@example.com"
+
+    first_id, first_token = await _create_anonymous_user()
+    second_id, second_token = await _create_anonymous_user()
+
+    # 둘 다 미검증 upgrade 성공 — 어느 쪽도 email_hash를 선점하지 않는다
+    assert (await _upgrade(first_token, email)).status_code == 200
+    assert (await _upgrade(second_token, email)).status_code == 200
+
+    # 먼저 verify한 쪽이 이메일을 확정
+    first_pending = await _get_pending_verify(first_id)
+    assert (await _verify_email(first_token, first_pending["code"])).status_code == 200
+
+    # 나중 쪽은 verify 시점 유니크 재검사에서 409
+    second_pending = await _get_pending_verify(second_id)
+    late_resp = await _verify_email(second_token, second_pending["code"])
+    assert late_resp.status_code == 409
+    assert late_resp.json()["detail"]["code"] == "EMAIL_ALREADY_EXISTS"
+
+    # 진 쪽 계정은 여전히 익명 상태로 남아야 한다(부분 확정 없음)
+    loser = await _fetch_user(uuid.UUID(second_id))
+    assert loser.email_hash is None
+    assert loser.is_anonymous is True
+
+
+async def test_verify_email_with_matching_code_commits_account_and_clears_pending():
+    """(c) verify-email 코드 일치 → 이 시점에 email_hash·password_hash·
+    is_anonymous=false·email_verified=true가 일괄 확정되고 Redis pending은 삭제된다.
+    확정된 비밀번호로 이후 로그인이 되어야 한다(pending의 password_hash가 정상 반영)."""
     user_id, access_token = await _create_anonymous_user()
     email = f"verify-{uuid.uuid4()}@example.com"
 
-    upgrade_resp = await _upgrade(access_token, email)
+    upgrade_resp = await _upgrade(access_token, email, password="pw12345678")
     assert upgrade_resp.status_code == 200
 
     pending = await _get_pending_verify(user_id)
@@ -170,14 +212,25 @@ async def test_verify_email_with_matching_code_marks_verified_and_clears_pending
     assert verify_resp.status_code == 200
     assert verify_resp.json()["data"]["email_verified"] is True
 
+    # 이 시점에 전 필드가 확정돼야 한다
     user = await _fetch_user(uuid.UUID(user_id))
+    assert user.email_hash is not None
+    assert user.password_hash is not None
+    assert user.is_anonymous is False
     assert user.email_verified is True
 
     assert await _get_pending_verify(user_id) is None
 
+    # 확정된 이메일+비밀번호로 로그인 가능 — pending의 password_hash가 정상 반영됐는지 확인
+    async with httpx.AsyncClient(base_url=BASE_URL, timeout=10.0) as client:
+        login_resp = await client.post(
+            "/v1/auth/login", json={"email": email, "password": "pw12345678"}
+        )
+    assert login_resp.status_code == 200
 
-async def test_verify_email_with_wrong_code_returns_400():
-    """잘못된 코드 → 400 INVALID_CODE, email_verified는 그대로 false."""
+
+async def test_verify_email_with_wrong_code_returns_400_and_leaves_user_untouched():
+    """잘못된 코드 → 400 INVALID_CODE. 확정이 일어나지 않아 User는 익명 그대로여야 한다."""
     user_id, access_token = await _create_anonymous_user()
     email = f"wrongcode-{uuid.uuid4()}@example.com"
 
@@ -190,22 +243,73 @@ async def test_verify_email_with_wrong_code_returns_400():
     assert resp.json()["detail"]["code"] == "INVALID_CODE"
 
     user = await _fetch_user(uuid.UUID(user_id))
+    assert user.email_hash is None
+    assert user.is_anonymous is True
     assert user.email_verified is False
 
 
-async def test_upgrade_on_already_upgraded_account_returns_409():
-    """(d) 이미 승격된 계정 upgrade 재호출 → 409 ALREADY_UPGRADED."""
-    _, access_token = await _create_anonymous_user()
+async def test_verify_email_brute_force_returns_429_after_max_attempts():
+    """코드 오입력이 상한(5회)을 넘으면 429 TOO_MANY_ATTEMPTS로 잠기고 pending이
+    파기된다(브루트포스 방어). 이후 정답 코드도 통하지 않아야 한다."""
+    user_id, access_token = await _create_anonymous_user()
+    email = f"brute-{uuid.uuid4()}@example.com"
+
+    assert (await _upgrade(access_token, email)).status_code == 200
+    pending = await _get_pending_verify(user_id)
+    correct_code = pending["code"]
+
+    # 5회까지는 400(오답), 6회째부터 429
+    for _ in range(5):
+        r = await _verify_email(access_token, "000000")
+        assert r.status_code == 400
+
+    locked = await _verify_email(access_token, "000000")
+    assert locked.status_code == 429
+    assert locked.json()["detail"]["code"] == "TOO_MANY_ATTEMPTS"
+
+    # pending 파기 확인 — 원래 정답 코드도 이제 무효(재발급 필요)
+    assert await _get_pending_verify(user_id) is None
+    after = await _verify_email(access_token, correct_code)
+    assert after.status_code in (400, 429)
+
+    user = await _fetch_user(uuid.UUID(user_id))
+    assert user.email_verified is False
+    assert user.is_anonymous is True
+
+
+async def test_upgrade_on_verified_account_returns_409():
+    """(d) 이미 인증까지 마친(email_hash 확정) 계정이 upgrade 재호출 → 409 ALREADY_UPGRADED.
+    (인증 전 재호출은 이메일 변경으로 허용되므로 여기선 verify까지 마친 상태를 검증)."""
+    user_id, access_token = await _create_anonymous_user()
     first_email = f"already-{uuid.uuid4()}@example.com"
 
-    first_resp = await _upgrade(access_token, first_email)
-    assert first_resp.status_code == 200
+    await _upgrade_and_verify(user_id, access_token, first_email)
 
     second_email = f"another-{uuid.uuid4()}@example.com"
     second_resp = await _upgrade(access_token, second_email)
 
     assert second_resp.status_code == 409
     assert second_resp.json()["detail"]["code"] == "ALREADY_UPGRADED"
+
+
+async def test_reupgrade_before_verification_replaces_pending_email():
+    """인증 전 upgrade 재호출은 허용 — pending 이메일을 새 값으로 교체할 수 있어야 한다
+    (오타 정정 UX). User는 여전히 미변경."""
+    user_id, access_token = await _create_anonymous_user()
+
+    first_email = f"typo-{uuid.uuid4()}@example.com"
+    assert (await _upgrade(access_token, first_email)).status_code == 200
+
+    corrected = f"correct-{uuid.uuid4()}@example.com"
+    assert (await _upgrade(access_token, corrected)).status_code == 200
+
+    pending = await _get_pending_verify(user_id)
+    assert pending is not None
+    assert pending["email"] == corrected
+
+    user = await _fetch_user(uuid.UUID(user_id))
+    assert user.email_hash is None
+    assert user.is_anonymous is True
 
 
 async def test_resend_verification_issues_new_code_for_same_email():
