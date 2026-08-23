@@ -35,6 +35,7 @@ import RoutineDetailScreen from '@/screens/routine/RoutineDetailScreen';
 import RoutineAddScreen    from '@/screens/routine/RoutineAddScreen';
 import ProfileEditScreen   from '@/screens/my/ProfileEditScreen';
 import NotificationSettingsScreen from '@/screens/my/NotificationSettingsScreen';
+import AchievementHistoryScreen from '@/screens/my/AchievementHistoryScreen';
 import LegalScreen         from '@/screens/legal/LegalScreen';
 import type { LegalKind }  from '@/screens/legal/LegalScreen';
 import ChatScreen          from '@/screens/chat/ChatScreen';
@@ -60,6 +61,7 @@ export type RootStackParamList = {
   RoutineAdd: undefined;
   ProfileEdit: undefined;
   NotificationSettings: undefined;
+  AchievementHistory: undefined;
   Legal: { kind: LegalKind };
   Chat: undefined;
   SupportConnect: undefined;
@@ -156,6 +158,7 @@ export default function Navigation() {
             <Stack.Screen name="RoutineAdd"    component={RoutineAddScreen}/>
             <Stack.Screen name="ProfileEdit"          component={ProfileEditScreen}/>
             <Stack.Screen name="NotificationSettings" component={NotificationSettingsScreen}/>
+            <Stack.Screen name="AchievementHistory"   component={AchievementHistoryScreen}/>
             <Stack.Screen name="Legal"                component={LegalScreen}/>
             <Stack.Screen name="Chat"                 component={ChatScreen}/>
             <Stack.Screen name="SupportConnect"       component={SupportConnectScreen}/>

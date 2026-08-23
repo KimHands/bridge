@@ -151,7 +151,7 @@ export default function MyPageScreen() {
 
         <Section title="활동" items={[
           { icon: <Target {...ICON_PROPS} />, label: '내 목표', onPress: () => notImplemented('내 목표') },
-          { icon: <Trophy {...ICON_PROPS} />, label: '달성 기록', badge: weeklyMission?.is_achieved ? '달성' : undefined, onPress: () => notImplemented('달성 기록') },
+          { icon: <Trophy {...ICON_PROPS} />, label: '달성 기록', badge: weeklyMission?.is_achieved ? '달성' : undefined, onPress: () => navigation.navigate('AchievementHistory') },
           { icon: <ChartBar {...ICON_PROPS} />, label: '이전 자가평가 결과 보기', onPress: () => navigation.navigate('Assessment', { mode: 'view' }) },
           { icon: <Notepad {...ICON_PROPS} />, label: '자가평가 다시 하기', onPress: () => navigation.navigate('Assessment') },
         ]}/>
