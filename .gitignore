@@ -41,8 +41,15 @@ venv/
 .claude/
 .bkit/
 docs/.bkit-memory.json
+docs/.pdca-status.json
+docs/.pdca-snapshots/
 
 # ── 백업 / 임시 ──────────────────────────────
 .backup-*/
 *.bak
 *.tmp
+
+# ── 로컬 전용 (Public 배포 제외) ─────────────
+.superpowers/
+참고파일/
+/*.pdf
