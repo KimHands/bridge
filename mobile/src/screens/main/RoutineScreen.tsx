@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, Pressable, ScrollView, StyleSheet } from 'react-native';
-import Svg, { Circle, Text as SvgText } from 'react-native-svg';
+import Svg, { Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/navigation/Navigation';
@@ -16,15 +16,20 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 function BigGauge({ value }: { value: number }) {
   const r = 28, c = 2 * Math.PI * r;
   return (
-    <Svg width={72} height={72} viewBox="0 0 72 72">
-      <Circle cx={36} cy={36} r={r} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={6}/>
-      <Circle cx={36} cy={36} r={r} fill="none" stroke="#fff" strokeWidth={6}
-              strokeDasharray={`${c} ${c}`} strokeDashoffset={c * (1 - value / 100)}
-              strokeLinecap="round" transform="rotate(-90 36 36)"/>
-      <SvgText x={36} y={42} textAnchor="middle" fill="#fff" fontSize={18} fontWeight="800" fontFamily={fontFamily.enBold}>
-        {`${Math.round(value)} %`}
-      </SvgText>
-    </Svg>
+    <View style={s.gauge}>
+      <Svg width={72} height={72} viewBox="0 0 72 72">
+        <Circle cx={36} cy={36} r={r} fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth={6}/>
+        <Circle cx={36} cy={36} r={r} fill="none" stroke="#fff" strokeWidth={6}
+                strokeDasharray={`${c} ${c}`} strokeDashoffset={c * (1 - value / 100)}
+                strokeLinecap="round" transform="rotate(-90 36 36)"/>
+      </Svg>
+      {/* 링 안쪽 지름은 50px — "100%"까지 들어가도록 숫자와 %를 나눠 가운데 정렬한다 */}
+      <View style={s.gaugeLabel}>
+        <Text style={s.gaugeValue}>
+          {Math.round(value)}<Text style={s.gaugeUnit}>%</Text>
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -110,6 +115,10 @@ export default function RoutineScreen() {
 }
 
 const s = StyleSheet.create({
+  gauge: { width: 72, height: 72 },
+  gaugeLabel: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
+  gaugeValue: { color: '#fff', fontSize: 16, fontWeight: '800', fontFamily: fontFamily.enBold },
+  gaugeUnit: { fontSize: 10 },
   header: { padding: 24, paddingBottom: 16 },
   label: { fontSize: 12, color: palette.primary, fontWeight: '700', letterSpacing: 1.5, fontFamily: fontFamily.enBold },
   title: { marginTop: 4, fontSize: 24, fontWeight: '800', color: palette.textHeading, letterSpacing: -0.5 },

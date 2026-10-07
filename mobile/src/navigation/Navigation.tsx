@@ -114,15 +114,16 @@ export default function Navigation() {
 
   if (!hydrated) return null; // splash is shown by App.tsx until hydrated
 
-  // Stack.Navigator key — auth 단계가 바뀌면 navigator 자체를 remount.
-  // 같은 navigator 안에서 Stack.Group을 조건부로 swap하면 v6에서 현재 라우트가
-  // 새 그룹에 없을 때 전환이 누락되는 케이스가 있어, key 기반 remount로 해결한다.
+  // auth 단계가 바뀌면 NavigationContainer째 remount해 내비게이션 상태를 버린다.
+  // Stack.Navigator만 remount하면 상태는 컨테이너에 남아, 새 그룹에도 같은 이름의
+  // 화면(Assessment·InitialRoutine 등)이 있을 때 옛 스택이 그대로 복원된다
+  // (예: 첫 루틴 '시작하기'를 눌러도 main 그룹의 InitialRoutine에 머무는 버그).
   const navKey = !user ? 'auth' : user.requires_assessment ? 'assessment' : 'main';
 
   return (
-    <NavigationContainer>
+    <NavigationContainer key={navKey}>
       <NotificationBridge />
-      <Stack.Navigator key={navKey} screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         {!user ? (
           <Stack.Group>
             <Stack.Screen name="Splash"     component={SplashScreen}/>
